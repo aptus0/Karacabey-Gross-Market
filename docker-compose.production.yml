@@ -1,0 +1,525 @@
+# Karacabey Gross Market - production oriented Docker stack
+# Go = public/mobile API motoru, PHP = panel/backoffice, Next.js = storefront.
+services:
+  nginx-edge:
+    image: nginx:stable-alpine
+    container_name: kgm-nginx-edge
+    profiles: ["edge"]
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/production.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/var/www/html/public:ro
+      - ./storage/app/public:/var/www/html/storage:ro
+      - kgm-nginx-cache:/var/cache/nginx
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    depends_on:
+      go-api:
+        condition: service_healthy
+      php-admin:
+        condition: service_healthy
+      next-web:
+        condition: service_healthy
+      kgm-mail-service:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  nginx-tunnel:
+    image: nginx:stable-alpine
+    container_name: kgm-nginx-tunnel
+    restart: unless-stopped
+    volumes:
+      - ./docker/nginx/tunnel.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./public:/var/www/html/public:ro
+      - ./storage/app/public:/var/www/html/storage:ro
+      - kgm-nginx-cache:/var/cache/nginx
+    depends_on:
+      go-api:
+        condition: service_healthy
+      php-admin:
+        condition: service_healthy
+      next-web:
+        condition: service_healthy
+      kgm-mail-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null --header='Host: api.karacabeygrossmarket.com' http://127.0.0.1/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks:
+      - kgm-network
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: kgm-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --protocol http2 --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./docker/cloudflared:/etc/cloudflared:ro
+    depends_on:
+      nginx-tunnel:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  go-api:
+    build:
+      context: ./api-go
+      dockerfile: Dockerfile
+    image: kgm-go-api:production
+    container_name: kgm-go-api
+    restart: unless-stopped
+    command: ["/app/kgm-api"]
+    environment:
+      KGM_ENV: production
+      KGM_HTTP_ADDR: 0.0.0.0:8080
+      KGM_TENANT_ID: ${KGM_TENANT_ID:-1}
+      KGM_MYSQL_DSN: ${KGM_MYSQL_DSN}
+      KGM_ALLOWED_ORIGINS: ${KGM_ALLOWED_ORIGINS:-https://karacabeygrossmarket.com,https://www.karacabeygrossmarket.com}
+      KGM_PUBLIC_API_URL: https://api.karacabeygrossmarket.com
+      KGM_STOREFRONT_URL: https://karacabeygrossmarket.com
+      KGM_CDN_URL: ${CDN_URL:-https://cdn.karacabeygrossmarket.com}
+      KGM_CATALOG_CACHE_MAX_AGE: ${KGM_CATALOG_CACHE_MAX_AGE:-60}
+      KGM_CATALOG_STALE_SECONDS: ${KGM_CATALOG_STALE_SECONDS:-300}
+      KGM_MAX_OPEN_CONNS: ${KGM_MAX_OPEN_CONNS:-260}
+      KGM_MAX_IDLE_CONNS: ${KGM_MAX_IDLE_CONNS:-120}
+      KGM_RATE_LIMIT_PER_MINUTE: ${KGM_RATE_LIMIT_PER_MINUTE:-2400}
+      KGM_PAYMENT_RATE_LIMIT_PER_MINUTE: ${KGM_PAYMENT_RATE_LIMIT_PER_MINUTE:-30}
+      KGM_LOGIN_IP_LIMIT: ${KGM_LOGIN_IP_LIMIT:-20}
+      KGM_LOGIN_ACCOUNT_LIMIT: ${KGM_LOGIN_ACCOUNT_LIMIT:-5}
+      KGM_LOGIN_LIMIT_WINDOW: ${KGM_LOGIN_LIMIT_WINDOW:-15m}
+      KGM_INTERNAL_API_TOKEN: ${KGM_INTERNAL_API_TOKEN}
+      KGM_ACTION_TOKEN_SECRET: ${KGM_ACTION_TOKEN_SECRET:?KGM_ACTION_TOKEN_SECRET is required}
+      KGM_ACTION_TOKEN_MODE: enforce
+      KGM_ACTION_TOKEN_TTL: ${KGM_ACTION_TOKEN_TTL:-90s}
+      KGM_SUPPORT_EMAIL: ${KGM_SUPPORT_EMAIL:-destek@karacabeygrossmarket.com}
+      KGM_SUPPORT_PHONE: ${KGM_SUPPORT_PHONE:-}
+      KGM_MAIL_SERVICE_URL: http://kgm-mail-service:8088
+      KGM_MAIL_ADMIN_TOKEN: ${MAIL_ADMIN_TOKEN:?MAIL_ADMIN_TOKEN is required}
+      KGM_PASSWORD_RESET_TTL: ${KGM_PASSWORD_RESET_TTL:-30m}
+      KGM_MOBILE_SYNC_LIMIT: ${KGM_MOBILE_SYNC_LIMIT:-250}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      KGM_REDIS_ADDR: redis:6379
+      KGM_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      KGM_REDIS_DB: ${KGM_REDIS_DB:-0}
+      KGM_REDIS_TIMEOUT: ${KGM_REDIS_TIMEOUT:-900ms}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-false}
+      PAYTR_DEBUG: ${PAYTR_DEBUG:-false}
+      PAYTR_OK_URL: ${PAYTR_OK_URL:-https://karacabeygrossmarket.com/checkout/success}
+      PAYTR_FAIL_URL: ${PAYTR_FAIL_URL:-https://karacabeygrossmarket.com/checkout/fail}
+      PAYTR_CALLBACK_URL: ${PAYTR_CALLBACK_URL:-https://api.karacabeygrossmarket.com/api/cb/p}
+      PAYTR_DIRECT_PAYMENT_URL: ${PAYTR_DIRECT_PAYMENT_URL:-https://www.paytr.com/odeme}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/readyz"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  go-worker:
+    image: kgm-go-api:production
+    container_name: kgm-go-worker
+    restart: unless-stopped
+    command: ["/app/kgm-worker"]
+    environment:
+      KGM_TENANT_ID: ${KGM_TENANT_ID:-1}
+      KGM_MYSQL_DSN: ${KGM_MYSQL_DSN}
+      ERP_SOURCE_ID: ${ERP_SOURCE_ID:-1}
+      ERP_SOURCE_URL: ${ERP_SOURCE_URL}
+      ERP_SOURCE_TOKEN: ${ERP_SOURCE_TOKEN}
+      ERP_SYNC_INTERVAL: ${ERP_SYNC_INTERVAL:-5m}
+      ERP_BATCH_SIZE: ${ERP_BATCH_SIZE:-1000}
+      ERP_HTTP_TIMEOUT: ${ERP_HTTP_TIMEOUT:-45s}
+      ERP_DB_MAX_OPEN_CONNS: ${ERP_DB_MAX_OPEN_CONNS:-30}
+      ERP_DB_MAX_IDLE_CONNS: ${ERP_DB_MAX_IDLE_CONNS:-15}
+      KGM_REDIS_ADDR: redis:6379
+      KGM_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      CLOUDFLARE_ZONE_ID: ${CLOUDFLARE_ZONE_ID:-}
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:-}
+      KGM_NOTIFICATION_BATCH_SIZE: ${KGM_NOTIFICATION_BATCH_SIZE:-100}
+      KGM_CLOUDFLARE_PURGE_BATCH_SIZE: ${KGM_CLOUDFLARE_PURGE_BATCH_SIZE:-30}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  php-admin:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: kgm-php-admin:production
+    container_name: kgm-php-admin
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - ./docker/php/opcache.ini:/usr/local/etc/php/conf.d/opcache.ini:ro
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY}
+      APP_URL: ${ADMIN_URL:-https://panel.karacabeygrossmarket.com}
+      FRONTEND_URL: ${FRONTEND_URL:-https://karacabeygrossmarket.com}
+      STOREFRONT_URL: ${STOREFRONT_URL:-https://karacabeygrossmarket.com}
+      ADMIN_URL: ${ADMIN_URL:-https://panel.karacabeygrossmarket.com}
+      API_URL: ${API_URL:-https://api.karacabeygrossmarket.com}
+      API_INTERNAL_URL: http://go-api:8080
+      GO_API_INTERNAL_URL: http://go-api:8080
+      CDN_URL: ${CDN_URL:-https://cdn.karacabeygrossmarket.com}
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-.karacabeygrossmarket.com}
+      SESSION_SECURE_COOKIE: "true"
+      SESSION_SAME_SITE: lax
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      MAIL_MAILER: ${MAIL_MAILER:-smtp}
+      MAIL_HOST: ${MAIL_HOST:-mailserver}
+      MAIL_PORT: ${MAIL_PORT:-587}
+      MAIL_USERNAME: ${MAIL_USERNAME:-destek@karacabeygrossmarket.com}
+      MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-destek@karacabeygrossmarket.com}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Karacabey Gross Market}
+      MAIL_ADMIN_TOKEN: ${MAIL_ADMIN_TOKEN:?MAIL_ADMIN_TOKEN is required}
+      KGM_INTERNAL_API_TOKEN: ${KGM_INTERNAL_API_TOKEN}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GOOGLE_CSE_KEY: ${GOOGLE_CSE_KEY:-}
+      GOOGLE_CSE_CX: ${GOOGLE_CSE_CX:-}
+      GOOGLE_CSE_REFERER: ${GOOGLE_CSE_REFERER:-https://karacabeygrossmarket.com/}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-false}
+      PAYTR_DEBUG: ${PAYTR_DEBUG:-false}
+      PAYTR_OK_URL: ${PAYTR_OK_URL:-https://karacabeygrossmarket.com/checkout/success}
+      PAYTR_FAIL_URL: ${PAYTR_FAIL_URL:-https://karacabeygrossmarket.com/checkout/fail}
+      PAYTR_CALLBACK_URL: ${PAYTR_CALLBACK_URL:-https://api.karacabeygrossmarket.com/api/cb/p}
+      PAYTR_DIRECT_PAYMENT_URL: ${PAYTR_DIRECT_PAYMENT_URL:-https://www.paytr.com/odeme}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit((bool) @fsockopen(\"127.0.0.1\", 9000) ? 0 : 1);'"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks:
+      - kgm-network
+
+  php-queue:
+    image: kgm-php-admin:production
+    container_name: kgm-php-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work redis --sleep=1 --tries=3 --timeout=120 --memory=256
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - ./docker/php/opcache.ini:/usr/local/etc/php/conf.d/opcache.ini:ro
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-.karacabeygrossmarket.com}
+      SESSION_SECURE_COOKIE: "true"
+      SESSION_SAME_SITE: lax
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_INTERNAL_URL: http://go-api:8080
+      GO_API_INTERNAL_URL: http://go-api:8080
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GOOGLE_CSE_KEY: ${GOOGLE_CSE_KEY:-}
+      GOOGLE_CSE_CX: ${GOOGLE_CSE_CX:-}
+      GOOGLE_CSE_REFERER: ${GOOGLE_CSE_REFERER:-https://karacabeygrossmarket.com/}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-false}
+      PAYTR_DEBUG: ${PAYTR_DEBUG:-false}
+      PAYTR_OK_URL: ${PAYTR_OK_URL:-https://karacabeygrossmarket.com/checkout/success}
+      PAYTR_FAIL_URL: ${PAYTR_FAIL_URL:-https://karacabeygrossmarket.com/checkout/fail}
+      PAYTR_CALLBACK_URL: ${PAYTR_CALLBACK_URL:-https://api.karacabeygrossmarket.com/api/cb/p}
+      PAYTR_DIRECT_PAYMENT_URL: ${PAYTR_DIRECT_PAYMENT_URL:-https://www.paytr.com/odeme}
+    depends_on:
+      php-admin:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  php-scheduler:
+    image: kgm-php-admin:production
+    container_name: kgm-php-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini:ro
+      - ./docker/php/opcache.ini:/usr/local/etc/php/conf.d/opcache.ini:ro
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DOMAIN: ${SESSION_DOMAIN:-.karacabeygrossmarket.com}
+      SESSION_SECURE_COOKIE: "true"
+      SESSION_SAME_SITE: lax
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      API_INTERNAL_URL: http://go-api:8080
+      GO_API_INTERNAL_URL: http://go-api:8080
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GOOGLE_CSE_KEY: ${GOOGLE_CSE_KEY:-}
+      GOOGLE_CSE_CX: ${GOOGLE_CSE_CX:-}
+      GOOGLE_CSE_REFERER: ${GOOGLE_CSE_REFERER:-https://karacabeygrossmarket.com/}
+      PAYTR_MERCHANT_ID: ${PAYTR_MERCHANT_ID}
+      PAYTR_MERCHANT_KEY: ${PAYTR_MERCHANT_KEY}
+      PAYTR_MERCHANT_SALT: ${PAYTR_MERCHANT_SALT}
+      PAYTR_TEST_MODE: ${PAYTR_TEST_MODE:-false}
+      PAYTR_DEBUG: ${PAYTR_DEBUG:-false}
+      PAYTR_OK_URL: ${PAYTR_OK_URL:-https://karacabeygrossmarket.com/checkout/success}
+      PAYTR_FAIL_URL: ${PAYTR_FAIL_URL:-https://karacabeygrossmarket.com/checkout/fail}
+      PAYTR_CALLBACK_URL: ${PAYTR_CALLBACK_URL:-https://api.karacabeygrossmarket.com/api/cb/p}
+      PAYTR_DIRECT_PAYMENT_URL: ${PAYTR_DIRECT_PAYMENT_URL:-https://www.paytr.com/odeme}
+    depends_on:
+      php-admin:
+        condition: service_started
+    networks:
+      - kgm-network
+
+  next-web:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "https://api.karacabeygrossmarket.com"
+        NEXT_PUBLIC_SITE_URL: "https://karacabeygrossmarket.com"
+        NEXT_PUBLIC_CDN_URL: "https://cdn.karacabeygrossmarket.com"
+        API_INTERNAL_URL: "http://go-api:8080"
+    image: kgm-next-web:production
+    container_name: kgm-next-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      LIVE_UPDATE: ${LIVE_UPDATE:-false}
+      API_INTERNAL_URL: http://go-api:8080
+      GO_API_INTERNAL_URL: http://go-api:8080
+      NEXT_PUBLIC_GO_API_URL: https://api.karacabeygrossmarket.com
+      NEXT_PUBLIC_API_URL: https://api.karacabeygrossmarket.com
+      NEXT_PUBLIC_SITE_URL: https://karacabeygrossmarket.com
+      NEXT_PUBLIC_CDN_URL: ${CDN_URL:-https://cdn.karacabeygrossmarket.com}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      NEXT_PUBLIC_ENABLE_MARKETING_PIXELS: ${NEXT_PUBLIC_ENABLE_MARKETING_PIXELS:-false}
+      GOOGLE_ANALYTICS_ID: ${GOOGLE_ANALYTICS_ID:-}
+      GOOGLE_ADS_ID: ${GOOGLE_ADS_ID:-}
+      GOOGLE_ADS_CONVERSION_LABEL: ${GOOGLE_ADS_CONVERSION_LABEL:-}
+      GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
+      GOOGLE_GTM_ID: ${GOOGLE_GTM_ID:-}
+      GOOGLE_MERCHANT_ID: ${GOOGLE_MERCHANT_ID:-}
+      META_PIXEL_ID: ${META_PIXEL_ID:-}
+      META_CATALOG_ID: ${META_CATALOG_ID:-}
+      META_BUSINESS_ID: ${META_BUSINESS_ID:-}
+      YANDEX_METRICA_ID: ${YANDEX_METRICA_ID:-}
+      YANDEX_VERIFICATION: ${YANDEX_VERIFICATION:-}
+      YANDEX_DIRECT_COUNTER_ID: ${YANDEX_DIRECT_COUNTER_ID:-}
+      MICROSOFT_UET_TAG_ID: ${MICROSOFT_UET_TAG_ID:-}
+      MICROSOFT_CLARITY_ID: ${MICROSOFT_CLARITY_ID:-}
+      BING_VERIFICATION: ${BING_VERIFICATION:-}
+      TIKTOK_PIXEL_ID: ${TIKTOK_PIXEL_ID:-}
+      NEXT_PUBLIC_ACTION_TOKEN_CLIENT: enforce
+      NEXT_DISABLE_SOURCEMAPS: "true"
+      KGM_CLASS_OBFUSCATION: ${KGM_CLASS_OBFUSCATION:-true}
+      KGM_CLASS_OBFUSCATION_SALT: ${KGM_CLASS_OBFUSCATION_SALT:-}
+      STOREFRONT_URL: https://karacabeygrossmarket.com
+      CDN_URL: ${CDN_URL:-https://cdn.karacabeygrossmarket.com}
+    depends_on:
+      go-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    networks:
+      - kgm-network
+
+  kgm-mail-service:
+    build:
+      context: ./mail
+      dockerfile: Dockerfile
+    image: kgm-mail-service:production
+    container_name: kgm-mail-service
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_ADDR: :8088
+      APP_PUBLIC_URL: ${MAIL_PUBLIC_URL:-https://webmail.karacabeygrossmarket.com}
+      APP_DATA_DIR: /app/data
+      MAIL_ADMIN_TOKEN: ${MAIL_ADMIN_TOKEN:?MAIL_ADMIN_TOKEN is required}
+      MAIL_INBOUND_TOKEN: ${MAIL_INBOUND_TOKEN:?MAIL_INBOUND_TOKEN is required}
+      MAIL_DEFAULT_FROM_NAME: ${MAIL_DEFAULT_FROM_NAME:-Karacabey Gross Market}
+      MAIL_DEFAULT_FROM_EMAIL: ${MAIL_DEFAULT_FROM_EMAIL:-noreply@karacabeygrossmarket.com}
+      MAIL_SUPPORT_EMAIL: ${MAIL_SUPPORT_EMAIL:-destek@karacabeygrossmarket.com}
+      MAIL_ORDER_EMAIL: ${MAIL_ORDER_EMAIL:-siparis@karacabeygrossmarket.com}
+      MAIL_NOREPLY_EMAIL: ${MAIL_NOREPLY_EMAIL:-noreply@karacabeygrossmarket.com}
+      SMTP_HOST: mailserver
+      SMTP_PORT: 25
+      SMTP_TLS_SERVER_NAME: mail.karacabeygrossmarket.com
+      SMTP_TLS_INSECURE_SKIP_VERIFY: "true"
+      SMTP_AUTH: "false"
+      SMTP_DISABLED: "false"
+      MAILDIR_POLL_ENABLED: "true"
+      MAILDIR_ROOT: /maildata
+      MAILDIR_INTERVAL_SECONDS: ${MAILDIR_INTERVAL_SECONDS:-20}
+      MAX_JSON_BODY_BYTES: ${MAIL_MAX_JSON_BODY_BYTES:-1048576}
+      RATE_LIMIT_PER_MINUTE: ${MAIL_RATE_LIMIT_PER_MINUTE:-180}
+    volumes:
+      - kgm-mail-service-data:/app/data
+      - kgm-mail-data:/maildata:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8088/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+    depends_on:
+      mailserver:
+        condition: service_started
+    networks:
+      - kgm-network
+
+  mysql:
+    image: mysql:8.4
+    container_name: kgm-mysql
+    restart: unless-stopped
+    command: ["mysqld", "--defaults-file=/etc/mysql/conf.d/my.cnf"]
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - kgm-mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kgm-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kgm-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - kgm-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - kgm-network
+
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: kgm-mailserver
+    hostname: mail
+    domainname: karacabeygrossmarket.com
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    environment:
+      ENABLE_SPAMASSASSIN: 1
+      ENABLE_CLAMAV: 0
+      ENABLE_FAIL2BAN: 1
+      ENABLE_OPENDKIM: 1
+      ENABLE_OPENDMARC: 1
+      ENABLE_POLICYD_SPF: 1
+      SSL_TYPE: ${MAILSERVER_SSL_TYPE:-manual}
+      SSL_CERT_PATH: ${MAILSERVER_SSL_CERT_PATH:-/tmp/docker-mailserver/ssl/mail.karacabeygrossmarket.com-cert.pem}
+      SSL_KEY_PATH: ${MAILSERVER_SSL_KEY_PATH:-/tmp/docker-mailserver/ssl/mail.karacabeygrossmarket.com-key.pem}
+      ONE_DIR: 1
+      PERMIT_DOCKER: network
+      SPOOF_PROTECTION: 1
+    volumes:
+      - kgm-mail-data:/var/mail
+      - kgm-mail-state:/var/mail-state
+      - kgm-mail-logs:/var/log/mail
+      - ./docker/mail/config:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - kgm-network
+
+networks:
+  kgm-network:
+    driver: bridge
+
+volumes:
+  kgm-nginx-cache:
+  kgm-mysql-data:
+  kgm-redis-data:
+  kgm-mail-data:
+  kgm-mail-state:
+  kgm-mail-logs:
+  kgm-mail-service-data:

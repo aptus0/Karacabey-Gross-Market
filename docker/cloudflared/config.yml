@@ -1,0 +1,17 @@
+tunnel: 67e008cf-25b4-4a34-a2b6-d3d3eaed473d
+credentials-file: /etc/cloudflared/67e008cf-25b4-4a34-a2b6-d3d3eaed473d.json
+
+ingress:
+  - hostname: karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - hostname: www.karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - hostname: api.karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - hostname: panel.karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - hostname: cdn.karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - hostname: webmail.karacabeygrossmarket.com
+    service: http://nginx-tunnel:80
+  - service: http_status:404

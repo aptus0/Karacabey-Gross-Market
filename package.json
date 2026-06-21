@@ -1,0 +1,22 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "local:setup": "bash scripts/local-live-setup.sh",
+        "local:live": "bash scripts/local-live-run.sh",
+        "production:live": "bash scripts/production-live.sh start",
+        "production:logs": "bash scripts/production-live.sh logs"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "laravel-vite-plugin": "^3.0.0",
+        "tailwindcss": "^4.0.0",
+        "vite": "^8.0.0"
+    },
+    "dependencies": {
+        "alpinejs": "^3.15.11"
+    }
+}

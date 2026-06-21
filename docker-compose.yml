@@ -1,0 +1,219 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: kgm-php-app
+    container_name: kgm-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      STOREFRONT_URL: ${STOREFRONT_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      API_URL: ${API_URL}
+      API_INTERNAL_URL: http://web
+      CDN_URL: ${CDN_URL}
+      COMMERCE_PRIMARY_DOMAIN: ${COMMERCE_PRIMARY_DOMAIN}
+      SESSION_DOMAIN: ${SESSION_DOMAIN}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  queue:
+    image: kgm-php-app
+    container_name: kgm-queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=120
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      STOREFRONT_URL: ${STOREFRONT_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      API_URL: ${API_URL}
+      API_INTERNAL_URL: http://web
+      CDN_URL: ${CDN_URL}
+      COMMERCE_PRIMARY_DOMAIN: ${COMMERCE_PRIMARY_DOMAIN}
+      SESSION_DOMAIN: ${SESSION_DOMAIN}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  scheduler:
+    image: kgm-php-app
+    container_name: kgm-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: sh -c "while true; do php artisan schedule:run --verbose --no-interaction; sleep 60; done"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/php.ini:/usr/local/etc/php/conf.d/custom.ini
+    environment:
+      APP_ENV: ${APP_ENV}
+      APP_DEBUG: ${APP_DEBUG}
+      APP_URL: ${APP_URL}
+      FRONTEND_URL: ${FRONTEND_URL}
+      STOREFRONT_URL: ${STOREFRONT_URL}
+      ADMIN_URL: ${ADMIN_URL}
+      API_URL: ${API_URL}
+      API_INTERNAL_URL: http://web
+      CDN_URL: ${CDN_URL}
+      COMMERCE_PRIMARY_DOMAIN: ${COMMERCE_PRIMARY_DOMAIN}
+      SESSION_DOMAIN: ${SESSION_DOMAIN}
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - kgm-network
+
+  web:
+    image: nginx:alpine
+    container_name: kgm-nginx
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT}:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - app
+      - node
+    networks:
+      - kgm-network
+
+  node:
+    build:
+      context: .
+      dockerfile: docker/node/Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    image: kgm-node
+    container_name: kgm-node
+    restart: unless-stopped
+    ports:
+      - "${NODE_PORT}:3000"
+    volumes:
+      - ./resources/js:/app
+      - /app/node_modules
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      NODE_ENV: ${NODE_ENV:-production}
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      INTERNAL_API_URL: http://web
+      API_INTERNAL_URL: http://web
+      NEXT_PUBLIC_API_URL: ${API_URL}
+      NEXT_PUBLIC_SITE_URL: ${STOREFRONT_URL}
+      NEXT_PUBLIC_CDN_URL: ${CDN_URL}
+      STOREFRONT_URL: ${STOREFRONT_URL}
+      API_URL: ${API_URL}
+      CDN_URL: ${CDN_URL}
+    command: sh -c "if [ \"$$APP_ENV\" = 'production' ] || [ \"$$NODE_ENV\" = 'production' ]; then npm run build && npm run start -- --hostname 0.0.0.0 --port 3000; else npm run dev; fi"
+    networks:
+      - kgm-network
+
+  mysql:
+    image: mysql:8.0.46
+    container_name: kgm-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${MYSQL_PORT}:3306"
+    volumes:
+      - kgm-mysql-data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf
+    networks:
+      - kgm-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: kgm-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_HOST_PORT}:6379"
+    volumes:
+      - kgm-redis-data:/data
+    networks:
+      - kgm-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  kgm-network:
+    driver: bridge
+
+volumes:
+  kgm-mysql-data:
+  kgm-redis-data:

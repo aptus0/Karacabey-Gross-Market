@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 72" fill="none">
+  <rect width="200" height="72" rx="8" fill="#CC0000"/>
+  <text x="100" y="30" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" fill="white" text-anchor="middle" letter-spacing="1">yurtiçi</text>
+  <text x="100" y="54" font-family="Arial, sans-serif" font-size="13" font-weight="600" fill="#FFCCCC" text-anchor="middle" letter-spacing="3">KARGO</text>
+  <!-- Arrow/truck icon left -->
+  <path d="M16 28 L16 48 L32 48 L32 36 L26 28 Z" fill="white" opacity="0.15"/>
+  <path d="M26 28 L32 36 L26 36 Z" fill="white" opacity="0.2"/>
+  <!-- Right decoration -->
+  <path d="M168 24 L184 36 L168 48" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3" fill="none"/>
+</svg>

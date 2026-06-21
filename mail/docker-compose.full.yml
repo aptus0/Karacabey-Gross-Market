@@ -1,0 +1,58 @@
+services:
+  mailserver:
+    image: ghcr.io/docker-mailserver/docker-mailserver:latest
+    container_name: kgm-mailserver
+    hostname: mail.karacabeygrossmarket.com
+    env_file: .env.mailserver
+    restart: unless-stopped
+    ports:
+      - "25:25"      # SMTP inbound
+      - "465:465"    # SMTPS
+      - "587:587"    # Submission
+      - "993:993"    # IMAPS
+    volumes:
+      - kgm_mailserver_maildata:/var/mail
+      - kgm_mailserver_state:/var/mail-state
+      - kgm_mailserver_logs:/var/log/mail
+      - ./deploy/docker-mailserver/config:/tmp/docker-mailserver
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    cap_add:
+      - NET_ADMIN
+    stop_grace_period: 1m
+
+  kgm-mail-service:
+    build: .
+    container_name: kgm-mail-service
+    restart: unless-stopped
+    depends_on:
+      - mailserver
+    env_file: .env
+    volumes:
+      - kgm_mail_service_data:/app/data
+      - kgm_mailserver_maildata:/maildata:ro
+
+  kgm-mail-auth-proxy:
+    build: ../kgm-mail-auth-proxy
+    container_name: kgm-mail-auth-proxy
+    restart: unless-stopped
+    depends_on:
+      - kgm-mail-service
+    env_file: ../kgm-mail-auth-proxy/.env.example
+    environment:
+      - MAIL_API_URL=http://kgm-mail-service:8088
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  cloudflared-mail:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared-mail
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+
+volumes:
+  kgm_mailserver_maildata:
+  kgm_mailserver_state:
+  kgm_mailserver_logs:
+  kgm_mail_service_data:

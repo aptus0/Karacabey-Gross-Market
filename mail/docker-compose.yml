@@ -1,0 +1,12 @@
+services:
+  kgm-mail-service:
+    build: .
+    container_name: kgm-mail-service
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8088:8088"
+    volumes:
+      - kgm_mail_service_data:/app/data
+volumes:
+  kgm_mail_service_data:

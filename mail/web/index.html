@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#ff5a00">
+  <title>KGM Mail</title>
+  <link rel="stylesheet" href="/styles.css?v=20260521">
+  <link rel="icon" href="/kgm-mail-logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ════════════════════════ TOP BAR ════════════════════════ -->
+    <header class="topbar">
+      <div class="topbar__brand">
+        <img src="/kgm-mail-logo.svg" alt="KGM Mail" class="logo">
+        <div class="brand-text">
+          <strong>KGM Mail</strong>
+          <span class="domain">webmail.karacabeygrossmarket.com</span>
+        </div>
+      </div>
+
+      <div class="topbar__search">
+        <kbd class="kbd-hint">/</kbd>
+        <input type="search" id="globalSearch" placeholder="Mail, ticket, müşteri ara..." autocomplete="off">
+      </div>
+
+      <div class="topbar__actions">
+        <button class="btn btn--ghost" id="refreshBtn" title="Yenile (R)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10"/><path d="M20.49 15a9 9 0 01-14.85 3.36L1 14"/></svg>
+          <span>Yenile</span>
+        </button>
+        <button class="btn btn--ghost" id="adminTokenBtn" title="Admin token ayarla">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 11c2.28 0 4-1.72 4-4s-1.72-4-4-4-4 1.72-4 4 1.72 4 4 4z"/><path d="M4 20c0-4.42 3.58-8 8-8s8 3.58 8 8"/></svg>
+          <span>Token</span>
+        </button>
+        <button class="btn btn--primary" id="composeBtn" title="Yeni mail (C)">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+          <span>Yaz</span>
+        </button>
+      </div>
+      <div class="topbar__status">
+        <span id="adminTokenStatus">Admin token gerekli</span>
+      </div>
+    </header>
+
+    <!-- ════════════════════════ MAIN GRID ════════════════════════ -->
+    <div class="main">
+
+      <!-- ───── SIDEBAR ───── -->
+      <aside class="sidebar">
+        <div class="sidebar__header">
+          <h2>Mail</h2>
+          <p>Karacabey Gross Market</p>
+        </div>
+        <button class="btn btn--compose" id="composeBtnSidebar" title="Yeni mail oluştur">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7"/><path d="M8 7V4h8v3"/><path d="M12 11v6"/><path d="M9 14h6"/></svg>
+          Yeni Mail
+        </button>
+        <nav class="nav">
+          <button class="nav-item is-active" data-view="dashboard">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h7V3H3v4zm0 6h7v-4H3v4zm0 6h7v-4H3v4zm10-12h8V3h-8v4zm0 6h8v-4h-8v4zm0 6h8v-4h-8v4z"/></svg>
+            Genel Bakış
+          </button>
+          <button class="nav-item" data-view="inbox">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H16l-2 3H10l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+            Gelen Kutusu
+            <span class="badge" id="inboxBadge">0</span>
+          </button>
+          <button class="nav-item" data-view="tickets">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+            Destek Talepleri
+            <span class="badge" id="ticketBadge">0</span>
+          </button>
+          <button class="nav-item" data-view="sent">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Gönderilen
+          </button>
+
+          <div class="nav-section">Yönetim</div>
+
+          <button class="nav-item" data-view="templates">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Şablonlar
+          </button>
+          <button class="nav-item" data-view="mailboxes">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            Mailboxlar
+          </button>
+          <button class="nav-item" data-view="system">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Sistem & DNS
+          </button>
+        </nav>
+
+        <footer class="sidebar__footer">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText">Bağlanıyor...</span>
+        </footer>
+      </aside>
+
+      <!-- ───── CONTENT AREA ───── -->
+      <main class="content">
+
+        <!-- DASHBOARD -->
+        <section class="view is-active" data-view-content="dashboard">
+          <header class="view-head">
+            <div>
+              <h1>Dashboard</h1>
+              <p class="muted">Mail sunucusu canlı durumu</p>
+            </div>
+          </header>
+
+          <div class="stats" id="statsGrid"></div>
+
+          <div class="dash-grid">
+            <article class="card">
+              <header class="card-head">
+                <h2>Son Gelen Mailler</h2>
+                <button class="link" data-view="inbox">Tümünü gör →</button>
+              </header>
+              <div class="list" id="inboxPreview"></div>
+            </article>
+            <article class="card">
+              <header class="card-head">
+                <h2>Açık Destek Talepleri</h2>
+                <button class="link" data-view="tickets">Tümünü gör →</button>
+              </header>
+              <div class="list" id="ticketPreview"></div>
+            </article>
+          </div>
+        </section>
+
+        <!-- INBOX -->
+        <section class="view" data-view-content="inbox">
+          <header class="view-head">
+            <div>
+              <h1>Gelen Kutusu</h1>
+              <p class="muted"><span id="inboxCount">0</span> mail</p>
+            </div>
+            <div class="view-head__actions">
+              <input class="filter" id="inboxFilter" type="search" placeholder="Filtre...">
+            </div>
+          </header>
+          <div class="split">
+            <div class="list-pane" id="inboxList"></div>
+            <div class="detail-pane" id="inboxDetail">
+              <div class="empty">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <p>Soldan bir mail seçin</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TICKETS -->
+        <section class="view" data-view-content="tickets">
+          <header class="view-head">
+            <div>
+              <h1>Destek Talepleri</h1>
+              <p class="muted"><span id="ticketCount">0</span> ticket</p>
+            </div>
+            <div class="view-head__actions">
+              <div class="filter-chips" id="ticketStatusFilter">
+                <button class="chip is-active" data-status="all">Hepsi</button>
+                <button class="chip" data-status="open">Açık</button>
+                <button class="chip" data-status="pending">Beklemede</button>
+                <button class="chip" data-status="resolved">Çözüldü</button>
+                <button class="chip" data-status="closed">Kapalı</button>
+              </div>
+            </div>
+          </header>
+          <div class="split">
+            <div class="list-pane" id="ticketList"></div>
+            <div class="detail-pane" id="ticketDetail">
+              <div class="empty">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/></svg>
+                <p>Soldan bir ticket seçin</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SENT -->
+        <section class="view" data-view-content="sent">
+          <header class="view-head">
+            <div>
+              <h1>Gönderilen</h1>
+              <p class="muted">Mail kuyruğu ve geçmişi</p>
+            </div>
+          </header>
+          <div class="card" style="overflow:hidden">
+            <table class="data-table">
+              <thead><tr><th>Durum</th><th>Alıcı</th><th>Konu</th><th>Tarih</th><th>Hata</th></tr></thead>
+              <tbody id="sentTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TEMPLATES -->
+        <section class="view" data-view-content="templates">
+          <header class="view-head">
+            <div>
+              <h1>Mail Şablonları</h1>
+              <p class="muted">Yeniden kullanılabilir şablonlar — compose ekranında çağrılır</p>
+            </div>
+            <div class="view-head__actions">
+              <button class="btn btn--primary" id="newTemplateBtn">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Yeni Şablon
+              </button>
+            </div>
+          </header>
+          <div class="split split--templates">
+            <div class="list-pane" id="templateList"></div>
+            <div class="detail-pane" id="templateEditor">
+              <div class="empty">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                <p>Soldan bir şablon seçin ya da "Yeni Şablon"</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MAILBOXES -->
+        <section class="view" data-view-content="mailboxes">
+          <header class="view-head">
+            <div>
+              <h1>Mailboxlar</h1>
+              <p class="muted">Yapılandırılmış e-posta hesapları</p>
+            </div>
+          </header>
+          <div class="card-grid" id="mailboxGrid"></div>
+        </section>
+
+        <!-- SYSTEM -->
+        <section class="view" data-view-content="system">
+          <header class="view-head">
+            <div>
+              <h1>Sistem & DNS</h1>
+              <p class="muted">Mail sunucusu çalıştırma özeti</p>
+            </div>
+          </header>
+          <div class="dash-grid">
+            <article class="card">
+              <header class="card-head"><h2>Mail server durumu</h2></header>
+              <div class="kv" id="systemSummary"></div>
+            </article>
+            <article class="card">
+              <header class="card-head"><h2>DNS Kontrol Listesi</h2></header>
+              <ul class="checklist">
+                <li><span class="check">✓</span><div><b>MX</b> → mail.karacabeygrossmarket.com</div></li>
+                <li><span class="check">✓</span><div><b>A</b> → Sunucu IP</div></li>
+                <li><span class="check">✓</span><div><b>SPF</b> → <code>v=spf1 mx a:mail.karacabeygrossmarket.com -all</code></div></li>
+                <li><span class="check">✓</span><div><b>DKIM</b> → <code>kgm2026._domainkey</code></div></li>
+                <li><span class="check">✓</span><div><b>DMARC</b> → <code>_dmarc TXT</code></div></li>
+                <li><span class="check">✓</span><div><b>PTR / Reverse DNS</b> → mail.karacabeygrossmarket.com</div></li>
+                <li><span class="check">✓</span><div><b>TLSA / MTA-STS</b> (opsiyonel) → daha yüksek deliverability</div></li>
+              </ul>
+            </article>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div class="modal" id="tokenModal" hidden>
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__panel" role="dialog" aria-labelledby="tokenModalTitle">
+        <header class="modal__head">
+          <h2 id="tokenModalTitle">Admin Token</h2>
+          <button class="icon-btn" data-close aria-label="Kapat">×</button>
+        </header>
+        <div class="modal__body">
+          <label>Admin Token
+            <input id="adminTokenInput" type="password" placeholder="X-Mail-Admin-Token" autocomplete="one-time-code">
+          </label>
+        </div>
+        <footer class="modal__foot">
+          <button type="button" class="btn btn--ghost" data-close>İptal</button>
+          <button type="button" class="btn btn--primary" id="saveTokenBtn">Kaydet</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ════════════════════════ COMPOSE MODAL ════════════════════════ -->
+    <div class="modal" id="composeModal" hidden>
+      <div class="modal__backdrop" data-close></div>
+      <div class="modal__panel" role="dialog" aria-labelledby="composeTitle">
+        <header class="modal__head">
+          <h2 id="composeTitle">Yeni Mail</h2>
+          <button class="icon-btn" data-close aria-label="Kapat">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </header>
+        <form class="modal__body" id="composeForm">
+          <div class="form-row">
+            <label>Şablon
+              <select id="composeTemplate"><option value="">— Boş —</option></select>
+            </label>
+            <label>Gönderen
+              <select name="from_email" id="composeFrom"></select>
+            </label>
+          </div>
+          <label>Alıcı *<input name="to" type="email" placeholder="musteri@domain.com" required></label>
+          <label>CC<input name="cc" type="text" placeholder="opsiyonel, virgülle ayırın"></label>
+          <label>Konu *<input name="subject" placeholder="Konu" required></label>
+          <div class="tabs-mini">
+            <button type="button" class="tab is-active" data-pane="text">Metin</button>
+            <button type="button" class="tab" data-pane="html">HTML</button>
+          </div>
+          <div class="pane is-active" data-pane="text">
+            <textarea name="text_body" rows="10" placeholder="Mail içeriği..." required></textarea>
+          </div>
+          <div class="pane" data-pane="html">
+            <textarea name="html_body" rows="10" placeholder="<p>HTML içerik...</p>" class="mono"></textarea>
+          </div>
+          <footer class="modal__foot">
+            <button type="button" class="btn btn--ghost" data-close>İptal</button>
+            <button type="submit" class="btn btn--primary">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Gönder
+            </button>
+          </footer>
+          <p id="sendResult" class="muted"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ════════════════════════ TOAST ════════════════════════ -->
+    <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  </div>
+  <script src="/app.js?v=20260521-auth2" defer></script>
+</body>
+</html>

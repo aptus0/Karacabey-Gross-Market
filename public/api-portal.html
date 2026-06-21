@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>API Portal — Karacabey Gross Market</title>
+  <link rel="icon" href="https://karacabeygrossmarket.com/favicon.ico" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #ff7a00;
+      --orange-dim: rgba(255,122,0,0.18);
+      --orange-glow: rgba(255,122,0,0.08);
+      --dark: #060c18;
+      --dark2: #0a1628;
+      --surface: rgba(255,255,255,0.035);
+      --border: rgba(255,255,255,0.07);
+      --text: #e2e8f0;
+      --muted: #4a5568;
+      --red: #ef4444;
+      --red-dim: rgba(239,68,68,0.12);
+    }
+
+    html, body {
+      width: 100%; height: 100%;
+      overflow-x: hidden;
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Animated background ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background: radial-gradient(ellipse 120% 80% at 60% -10%, #0e2040 0%, var(--dark) 60%);
+      overflow: hidden;
+    }
+
+    .bg-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(255,122,0,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,122,0,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 0%, transparent 75%);
+      animation: gridPulse 8s ease-in-out infinite;
+    }
+
+    @keyframes gridPulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: float 12s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .orb-1 {
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(255,122,0,0.12) 0%, transparent 70%);
+      top: -200px; right: -150px;
+      animation-delay: 0s; animation-duration: 14s;
+    }
+    .orb-2 {
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(255,60,0,0.07) 0%, transparent 70%);
+      bottom: -100px; left: -150px;
+      animation-delay: -5s; animation-duration: 18s;
+    }
+    .orb-3 {
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(100,180,255,0.05) 0%, transparent 70%);
+      top: 40%; left: 50%;
+      animation-delay: -3s; animation-duration: 20s;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(30px, -40px) scale(1.05); }
+      66% { transform: translate(-20px, 20px) scale(0.95); }
+    }
+
+    /* ── Particles ── */
+    .particles { position: absolute; inset: 0; overflow: hidden; }
+    .particle {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: var(--orange);
+      border-radius: 50%;
+      opacity: 0;
+      animation: rise linear infinite;
+    }
+    @keyframes rise {
+      0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.3; }
+      100% { transform: translateY(-20px) scale(1.5); opacity: 0; }
+    }
+
+    /* ── Layout ── */
+    .page {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; gap: 16px;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(6,12,24,0.6);
+      position: sticky; top: 0; z-index: 10;
+      animation: fadeDown 0.6s ease forwards;
+    }
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .logo-wrap {
+      display: flex; align-items: center; gap: 12px;
+      text-decoration: none;
+    }
+    .logo-img {
+      height: 32px; width: auto;
+      filter: drop-shadow(0 0 8px rgba(255,122,0,0.5));
+      transition: filter 0.3s;
+    }
+    .logo-img:hover { filter: drop-shadow(0 0 16px rgba(255,122,0,0.9)); }
+
+    .divider { color: #1e3a5f; font-size: 20px; font-weight: 200; }
+
+    .badge-api {
+      font-size: 12px; font-weight: 700; letter-spacing: 0.1em;
+      color: var(--orange); opacity: 0.9;
+      font-family: 'Courier New', monospace;
+    }
+
+    .status-pill {
+      margin-left: auto;
+      display: flex; align-items: center; gap: 7px;
+      background: var(--red-dim);
+      border: 1px solid rgba(239,68,68,0.3);
+      border-radius: 20px;
+      padding: 5px 14px;
+      font-size: 12px; font-weight: 600; color: #fca5a5;
+      letter-spacing: 0.06em;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 8px var(--red);
+      animation: blink 1.8s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .back-link {
+      font-size: 13px; color: var(--muted);
+      text-decoration: none; transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 80px 40px 60px;
+      animation: fadeUp 0.8s 0.2s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero-logo {
+      display: inline-block;
+      margin-bottom: 32px;
+    }
+    .hero-logo img {
+      height: 56px; width: auto;
+      filter: drop-shadow(0 0 24px rgba(255,122,0,0.6));
+    }
+
+    .hero h1 {
+      font-size: clamp(32px, 5vw, 52px);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 16px;
+    }
+    .hero h1 span { color: var(--orange); }
+
+    .typewriter {
+      display: inline-block;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid var(--orange);
+      animation: typing 2.4s steps(30) 0.6s both, blink-cursor 0.7s 3s step-end infinite;
+      max-width: 380px;
+    }
+    @keyframes typing {
+      from { width: 0; }
+      to   { width: 100%; }
+    }
+    @keyframes blink-cursor {
+      0%, 100% { border-color: var(--orange); }
+      50%       { border-color: transparent; }
+    }
+
+    .hero-sub {
+      margin-top: 12px;
+      font-size: 15px; color: #64748b; line-height: 1.7;
+      max-width: 520px; margin-inline: auto;
+    }
+
+    /* ── Terminal block ── */
+    .terminal {
+      margin: 40px auto;
+      max-width: 540px;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid rgba(255,122,0,0.2);
+      border-radius: 12px;
+      overflow: hidden;
+      animation: fadeUp 0.8s 0.5s ease both;
+      font-family: 'Courier New', Consolas, monospace;
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px;
+      background: rgba(255,255,255,0.04);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .dot { width: 11px; height: 11px; border-radius: 50%; }
+    .dot-r { background: #ef4444; }
+    .dot-y { background: #eab308; }
+    .dot-g { background: #22c55e; }
+    .terminal-title { font-size: 12px; color: var(--muted); margin-left: auto; margin-right: auto; }
+
+    .terminal-body { padding: 20px 24px; font-size: 13px; line-height: 2; }
+    .t-dim   { color: #334155; }
+    .t-key   { color: #7dd3fc; }
+    .t-val   { color: #86efac; }
+    .t-num   { color: #fbbf24; }
+    .t-err   { color: #f87171; }
+    .t-orange { color: var(--orange); }
+    .t-line { display: flex; gap: 8px; }
+
+    /* ── Endpoints grid ── */
+    .section {
+      max-width: 900px; margin: 0 auto;
+      padding: 0 32px 60px;
+      animation: fadeUp 0.8s 0.7s ease both;
+    }
+    .section-title {
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 20px;
+    }
+
+    .endpoints {
+      display: flex; flex-direction: column; gap: 1px;
+      border-radius: 12px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--border);
+    }
+    .ep {
+      display: grid;
+      grid-template-columns: 58px 1fr 1fr 56px;
+      align-items: center;
+      padding: 13px 20px;
+      background: var(--surface);
+      backdrop-filter: blur(8px);
+      gap: 12px;
+      transition: background 0.2s;
+    }
+    .ep:hover { background: rgba(255,255,255,0.055); }
+
+    .method {
+      font-family: 'Courier New', monospace;
+      font-size: 11px; font-weight: 800;
+      letter-spacing: 0.05em;
+    }
+    .get    { color: #4ade80; }
+    .post   { color: #60a5fa; }
+    .delete { color: #f87171; }
+
+    .ep-path { font-family: 'Courier New', monospace; font-size: 13px; color: #7dd3fc; }
+    .ep-desc { font-size: 12px; color: var(--muted); }
+    .ep-status {
+      text-align: right;
+      font-size: 12px; font-weight: 700;
+      color: var(--red); font-family: monospace;
+    }
+
+    /* ── Stats ── */
+    .stats {
+      max-width: 900px; margin: 0 auto 60px;
+      padding: 0 32px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      animation: fadeUp 0.8s 0.9s ease both;
+    }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: var(--orange-dim); }
+    .stat-label {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px;
+    }
+    .stat-value {
+      font-size: 22px; font-weight: 800; color: #334155;
+      font-family: 'Courier New', monospace;
+    }
+    .stat-unit { font-size: 12px; font-weight: 400; color: #1e293b; margin-left: 4px; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto;
+      padding: 24px 40px;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 12px;
+      font-size: 12px; color: #1e3a5f;
+      animation: fadeUp 0.6s 1s ease both;
+    }
+    footer a { color: #334155; text-decoration: none; transition: color 0.2s; }
+    footer a:hover { color: var(--orange); }
+
+    @media (max-width: 640px) {
+      header { padding: 16px 20px; }
+      .hero { padding: 60px 20px 40px; }
+      .section, .stats { padding-inline: 16px; }
+      .ep { grid-template-columns: 52px 1fr 52px; }
+      .ep-desc { display: none; }
+      footer { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg">
+  <div class="bg-grid"></div>
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  <div class="particles" id="particles"></div>
+</div>
+
+<div class="page">
+
+  <!-- Header -->
+  <header>
+    <a class="logo-wrap" href="https://karacabeygrossmarket.com">
+      <img class="logo-img" src="https://karacabeygrossmarket.com/assets/kgm-logo.png" alt="Karacabey Gross Market" />
+    </a>
+    <span class="divider">/</span>
+    <span class="badge-api">API</span>
+
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      SERVİS DIŞI
+    </div>
+
+    <a class="back-link" href="https://karacabeygrossmarket.com">← Ana Siteye Dön</a>
+  </header>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-logo">
+      <img src="https://karacabeygrossmarket.com/assets/kgm-logo.png" alt="KGM" />
+    </div>
+
+    <h1>Geliştirici <span>API</span> Portalı</h1>
+    <div class="typewriter">api.karacabeygrossmarket.com</div>
+    <p class="hero-sub">
+      REST tabanlı ticaret API'si. Ürün kataloğu, sipariş yönetimi ve sepet servisleri.
+      Tüm yanıtlar JSON formatındadır. Şu an bakım modunda.
+    </p>
+  </div>
+
+  <!-- Terminal -->
+  <div class="terminal">
+    <div class="terminal-bar">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="terminal-title">api.karacabeygrossmarket.com — health</span>
+    </div>
+    <div class="terminal-body">
+      <div class="t-line"><span class="t-dim">$</span> <span class="t-orange">curl</span> <span class="t-key">-s</span> https://api.karacabeygrossmarket.com/healthz</div>
+      <div class="t-line"><span class="t-dim">{</span></div>
+      <div class="t-line">&nbsp;&nbsp;<span class="t-key">"status"</span><span class="t-dim">:</span> <span class="t-err">"service_unavailable"</span><span class="t-dim">,</span></div>
+      <div class="t-line">&nbsp;&nbsp;<span class="t-key">"version"</span><span class="t-dim">:</span> <span class="t-val">"v1-beta"</span><span class="t-dim">,</span></div>
+      <div class="t-line">&nbsp;&nbsp;<span class="t-key">"uptime"</span><span class="t-dim">:</span> <span class="t-num">0</span><span class="t-dim">,</span></div>
+      <div class="t-line">&nbsp;&nbsp;<span class="t-key">"services"</span><span class="t-dim">:</span> <span class="t-dim">{</span></div>
+      <div class="t-line">&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-key">"catalog"</span><span class="t-dim">:</span> <span class="t-err">"down"</span><span class="t-dim">,</span></div>
+      <div class="t-line">&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-key">"auth"</span><span class="t-dim">:</span> <span class="t-err">"down"</span><span class="t-dim">,</span></div>
+      <div class="t-line">&nbsp;&nbsp;&nbsp;&nbsp;<span class="t-key">"orders"</span><span class="t-dim">:</span> <span class="t-err">"down"</span></div>
+      <div class="t-line">&nbsp;&nbsp;<span class="t-dim">}</span></div>
+      <div class="t-line"><span class="t-dim">}</span></div>
+      <div class="t-line" style="margin-top:8px"><span class="t-dim">HTTP/1.1</span> <span class="t-err">503 Service Unavailable</span></div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Aktif Servis</div>
+      <div class="stat-value">0<span class="stat-unit">/ 6</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Base URL</div>
+      <div class="stat-value" style="font-size:13px;color:#334155">api.kgm…</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Versiyon</div>
+      <div class="stat-value" style="font-size:16px;color:#334155">v1 beta</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Rate Limit</div>
+      <div class="stat-value" style="font-size:16px;color:#334155">—<span class="stat-unit">req/dk</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Yanıt Süresi</div>
+      <div class="stat-value">—<span class="stat-unit">ms</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Uptime (30g)</div>
+      <div class="stat-value">—<span class="stat-unit">%</span></div>
+    </div>
+  </div>
+
+  <!-- Endpoints -->
+  <div class="section">
+    <div class="section-title">Uç Noktalar — Tümü Kapalı</div>
+    <div class="endpoints">
+      <div class="ep">
+        <span class="method get">GET</span>
+        <span class="ep-path">/v1/products</span>
+        <span class="ep-desc">Ürün listesi</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method get">GET</span>
+        <span class="ep-path">/v1/products/{slug}</span>
+        <span class="ep-desc">Ürün detayı</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method get">GET</span>
+        <span class="ep-path">/v1/categories</span>
+        <span class="ep-desc">Kategori listesi</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method get">GET</span>
+        <span class="ep-path">/v1/search</span>
+        <span class="ep-desc">Ürün arama</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method post">POST</span>
+        <span class="ep-path">/v1/cart/items</span>
+        <span class="ep-desc">Sepete ekle</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method post">POST</span>
+        <span class="ep-path">/v1/orders</span>
+        <span class="ep-desc">Sipariş oluştur</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method post">POST</span>
+        <span class="ep-path">/v1/auth/token</span>
+        <span class="ep-desc">Erişim tokeni</span>
+        <span class="ep-status">503</span>
+      </div>
+      <div class="ep">
+        <span class="method delete">DEL</span>
+        <span class="ep-path">/v1/cart/items/{id}</span>
+        <span class="ep-desc">Sepetten çıkar</span>
+        <span class="ep-status">503</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <span>© 2025 <a href="https://karacabeygrossmarket.com">Karacabey Gross Market</a> · API Portal · v1-beta-preview</span>
+    <span>
+      <a href="mailto:destek@karacabeygrossmarket.com">destek@karacabeygrossmarket.com</a>
+    </span>
+  </footer>
+
+</div>
+
+<script>
+  /* Floating particles */
+  const container = document.getElementById('particles');
+  const COUNT = 28;
+  for (let i = 0; i < COUNT; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.cssText = [
+      `left:${Math.random() * 100}%`,
+      `width:${1 + Math.random() * 2}px`,
+      `height:${1 + Math.random() * 2}px`,
+      `animation-duration:${8 + Math.random() * 14}s`,
+      `animation-delay:${-Math.random() * 14}s`,
+      `opacity:${0.2 + Math.random() * 0.5}`,
+    ].join(';');
+    container.appendChild(p);
+  }
+</script>
+</body>
+</html>

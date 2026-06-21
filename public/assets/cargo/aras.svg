@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 72" fill="none">
+  <rect width="200" height="72" rx="8" fill="#E84C0C"/>
+  <!-- Stylized A shape -->
+  <polygon points="20,52 36,20 52,52 46,52 36,30 26,52" fill="white" opacity="0.25"/>
+  <text x="108" y="33" font-family="Arial Black, Arial, sans-serif" font-size="26" font-weight="900" fill="white" text-anchor="middle" letter-spacing="2">ARAS</text>
+  <text x="108" y="53" font-family="Arial, sans-serif" font-size="12" font-weight="500" fill="#FFCCAA" text-anchor="middle" letter-spacing="4">KARGO</text>
+  <!-- Right arrow -->
+  <path d="M170 30 L182 36 L170 42" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.4"/>
+</svg>
