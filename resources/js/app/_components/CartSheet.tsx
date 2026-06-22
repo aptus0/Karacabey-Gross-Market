@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
+  AlertTriangle,
   ArrowRight,
   Loader2,
   Lock,
@@ -12,6 +13,7 @@ import {
   Sparkles,
   Trash2,
   Truck,
+  X,
 } from "lucide-react";
 import { CouponInput } from "@/app/_components/CouponInput";
 import {
@@ -19,11 +21,406 @@ import {
   SheetContent,
   SheetTitle,
 } from "@/app/_components/ui/sheet";
-import { cartItemCount, formatCartMoney } from "@/lib/cart";
+import {
+  cartItemCount,
+  formatCartMoney,
+  type AppliedCoupon,
+  type CartLineItem,
+} from "@/lib/cart";
 import { useCartStore } from "@/lib/cart-store";
+import { productImageUrl } from "@/lib/media";
 import { FREE_SHIPPING_CENTS } from "@/lib/shipping-policy";
 import { track } from "@/lib/tracking";
-import { productImageUrl } from "@/lib/media";
+import { cn } from "@/lib/utils";
+
+type AsyncVoid = () => Promise<unknown> | void;
+type QuantityUpdater = (itemId: number, quantity: number) => Promise<unknown> | void;
+type ItemRemover = (itemId: number) => Promise<unknown> | void;
+
+function CartSheetHeader({
+  isEmpty,
+  count,
+  subtotal,
+  onClose,
+}: {
+  isEmpty: boolean;
+  count: number;
+  subtotal: number;
+  onClose: () => void;
+}) {
+  return (
+    <header className="kgm-luxury-drawer__header flex shrink-0 items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4">
+      <div className="kgm-luxury-drawer__title flex min-w-0 items-center gap-3">
+        <span
+          className="kgm-luxury-drawer__title-badge inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white shadow-sm"
+          aria-hidden="true"
+        >
+          <ShoppingBag size={18} strokeWidth={2.25} />
+        </span>
+        <div className="min-w-0">
+          <h2 className="truncate text-xl font-black tracking-tight text-slate-950">Sepetiniz</h2>
+          <p className="mt-0.5 truncate text-sm font-semibold text-slate-500">
+            {isEmpty ? "Henüz ürün eklemediniz" : `${count} ürün - ${formatCartMoney(subtotal)}`}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        className="kgm-luxury-drawer__close inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+        aria-label="Sepeti kapat"
+      >
+        <X size={18} />
+      </button>
+    </header>
+  );
+}
+
+function FreeShippingMeter({ subtotal }: { subtotal: number }) {
+  const progress = Math.min(100, Math.round((subtotal / FREE_SHIPPING_CENTS) * 100));
+  const remaining = Math.max(0, FREE_SHIPPING_CENTS - subtotal);
+  const reached = subtotal >= FREE_SHIPPING_CENTS;
+
+  return (
+    <section
+      className={cn(
+        "kgm-luxury-drawer__progress m-4 rounded-lg border px-4 py-3",
+        reached
+          ? "is-reached border-emerald-200 bg-emerald-50 text-emerald-900"
+          : "border-orange-100 bg-orange-50 text-orange-900",
+      )}
+    >
+      <div className="kgm-luxury-drawer__progress-row flex items-center gap-3">
+        <span
+          className="kgm-luxury-drawer__progress-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-orange-600 shadow-sm"
+          aria-hidden="true"
+        >
+          {reached ? <Sparkles size={15} strokeWidth={2.25} /> : <Truck size={15} strokeWidth={2.25} />}
+        </span>
+        <p className="text-sm font-semibold leading-5">
+          {reached ? (
+            <>
+              Tebrikler! <strong>Ücretsiz kargo</strong> kazandınız.
+            </>
+          ) : (
+            <>
+              <strong>{formatCartMoney(remaining)}</strong> daha eklerseniz{" "}
+              <strong>kargo bedava</strong>.
+            </>
+          )}
+        </p>
+      </div>
+      <div
+        className="kgm-luxury-drawer__progress-track mt-3 h-2 overflow-hidden rounded-full bg-white/80"
+        role="progressbar"
+        aria-valuenow={progress}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="kgm-luxury-drawer__progress-fill h-full rounded-full bg-orange-500 transition-[width] duration-300"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+    </section>
+  );
+}
+
+function CartNotice({
+  tone,
+  icon,
+  children,
+  actionLabel,
+  onAction,
+}: {
+  tone: "waiting" | "error";
+  icon: ReactNode;
+  children: ReactNode;
+  actionLabel?: string;
+  onAction?: AsyncVoid;
+}) {
+  return (
+    <div
+      className={cn(
+        "kgm-luxury-drawer__notice mx-4 mb-3 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm font-semibold",
+        tone === "waiting"
+          ? "is-waiting border-orange-200 bg-orange-50 text-orange-900"
+          : "is-error border-red-200 bg-red-50 text-red-700",
+      )}
+      role="status"
+      aria-live="polite"
+    >
+      <span
+        className="kgm-luxury-drawer__notice-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
+        aria-hidden="true"
+      >
+        {icon}
+      </span>
+      <p className="min-w-0 flex-1 leading-5">{children}</p>
+      {actionLabel && onAction ? (
+        <button
+          type="button"
+          onClick={() => void onAction()}
+          className="shrink-0 rounded-lg border border-orange-200 bg-white px-3 py-2 text-xs font-black text-orange-700 transition hover:bg-orange-50 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+        >
+          {actionLabel}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function CartEmptyState({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-7 px-6 py-12 text-center">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-slate-50 text-slate-300 ring-1 ring-slate-100">
+        <ShoppingBag size={40} strokeWidth={1.5} />
+      </div>
+      <div className="grid gap-2">
+        <h3 className="text-xl font-black tracking-tight text-slate-950">Sepetiniz boş</h3>
+        <p className="mx-auto max-w-xs text-sm font-medium leading-6 text-slate-500">
+          İhtiyacınız olan ürünler bir tık uzağınızda. Karacabey Gross seçkisini hemen keşfedin.
+        </p>
+      </div>
+      <Link
+        href="/products"
+        onClick={onClose}
+        className="inline-flex min-h-12 w-full max-w-xs items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 text-sm font-black text-white shadow-sm transition hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500/40"
+      >
+        Ürünleri keşfet
+        <ArrowRight size={16} />
+      </Link>
+    </div>
+  );
+}
+
+function CartLineRow({
+  item,
+  disabled,
+  onUpdateQuantity,
+  onRemove,
+}: {
+  item: CartLineItem;
+  disabled: boolean;
+  onUpdateQuantity: QuantityUpdater;
+  onRemove: ItemRemover;
+}) {
+  const unitPriceCents =
+    item.quantity > 0
+      ? Math.round(item.line_total_cents / item.quantity)
+      : item.product.price_cents;
+  const imageUrl = productImageUrl(item.product.image_url);
+
+  return (
+    <li className="kgm-luxury-line grid grid-cols-[76px_minmax(0,1fr)] gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+      <div className="kgm-luxury-line__media flex h-[76px] w-[76px] items-center justify-center overflow-hidden rounded-lg bg-slate-50 text-slate-300 ring-1 ring-slate-100">
+        {imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={item.product.name}
+            loading="lazy"
+            className="h-full w-full object-contain p-1"
+          />
+        ) : (
+          <ShoppingBag size={22} strokeWidth={1.5} />
+        )}
+      </div>
+      <div className="kgm-luxury-line__body grid min-w-0 gap-3">
+        <div className="kgm-luxury-line__top flex items-start justify-between gap-3">
+          <div className="kgm-luxury-line__info min-w-0">
+            <span className="kgm-luxury-line__brand block truncate text-[11px] font-black uppercase tracking-wide text-orange-600">
+              {item.product.brand ?? "Karacabey Gross Market"}
+            </span>
+            <h4 className="kgm-luxury-line__name mt-1 line-clamp-2 text-sm font-black leading-5 text-slate-950">
+              {item.product.name}
+            </h4>
+            <span className="kgm-luxury-line__unit mt-1 block text-xs font-semibold text-slate-500">
+              {formatCartMoney(unitPriceCents)} / {item.product.unit_name?.trim() || "adet"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => void onRemove(item.id)}
+            disabled={disabled}
+            className="kgm-luxury-line__remove inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-45"
+            aria-label={`${item.product.name} ürününü kaldır`}
+            title="Ürünü sepetten kaldır"
+          >
+            <Trash2 size={15} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="kgm-luxury-line__bottom flex items-center justify-between gap-3">
+          <div className="kgm-luxury-qty grid h-10 grid-cols-[36px_44px_36px] overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <button
+              type="button"
+              onClick={() => void onUpdateQuantity(item.id, item.quantity - 1)}
+              disabled={disabled || item.quantity <= 1}
+              className="inline-flex items-center justify-center text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Adeti azalt"
+            >
+              <Minus size={13} strokeWidth={2.5} />
+            </button>
+            <span className="inline-flex items-center justify-center border-x border-slate-200 text-sm font-black text-slate-950" aria-live="polite">
+              {item.quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => void onUpdateQuantity(item.id, item.quantity + 1)}
+              disabled={disabled}
+              className="inline-flex items-center justify-center text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Adeti artır"
+            >
+              <Plus size={13} strokeWidth={2.5} />
+            </button>
+          </div>
+          <strong className="kgm-luxury-line__total whitespace-nowrap text-base font-black text-slate-950">
+            {formatCartMoney(item.line_total_cents)}
+          </strong>
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function CartItemsList({
+  items,
+  rowDisabled,
+  isBusy,
+  onUpdateQuantity,
+  onRemove,
+  onClear,
+}: {
+  items: CartLineItem[];
+  rowDisabled: (item: CartLineItem) => boolean;
+  isBusy: boolean;
+  onUpdateQuantity: QuantityUpdater;
+  onRemove: ItemRemover;
+  onClear: AsyncVoid;
+}) {
+  return (
+    <ul className="kgm-luxury-drawer__items grid gap-3 p-4">
+      {items.map((item) => (
+        <CartLineRow
+          key={item.id}
+          item={item}
+          disabled={rowDisabled(item)}
+          onUpdateQuantity={onUpdateQuantity}
+          onRemove={onRemove}
+        />
+      ))}
+
+      {items.length > 1 ? (
+        <li className="kgm-luxury-drawer__clear-row flex justify-end">
+          <button
+            type="button"
+            onClick={() => void onClear()}
+            disabled={isBusy}
+            className="kgm-luxury-drawer__clear inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-600 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            <Trash2 size={13} strokeWidth={2} />
+            Sepeti temizle
+          </button>
+        </li>
+      ) : null}
+    </ul>
+  );
+}
+
+function CartSummaryFooter({
+  subtotal,
+  total,
+  discountCents,
+  appliedCoupon,
+  isBusy,
+  hasPendingSync,
+  onApplyCoupon,
+  onClearCoupon,
+  onClose,
+}: {
+  subtotal: number;
+  total: number;
+  discountCents: number;
+  appliedCoupon: AppliedCoupon | null;
+  isBusy: boolean;
+  hasPendingSync: boolean;
+  onApplyCoupon: (code: string) => Promise<unknown> | void;
+  onClearCoupon: () => Promise<unknown> | void;
+  onClose: () => void;
+}) {
+  return (
+    <footer className="kgm-luxury-drawer__footer mt-auto grid shrink-0 gap-3 border-t border-slate-200 bg-white p-4">
+      <div className="kgm-luxury-drawer__coupon">
+        <CouponInput
+          appliedCoupon={appliedCoupon}
+          onApply={onApplyCoupon}
+          onRemove={onClearCoupon}
+          disabled={isBusy}
+        />
+      </div>
+
+      <div className="kgm-luxury-drawer__totals grid gap-2 rounded-lg bg-slate-50 p-4">
+        <div className="kgm-luxury-drawer__totals-line flex items-center justify-between gap-3 text-sm font-semibold text-slate-600">
+          <span>Ara toplam</span>
+          <strong className="text-slate-950">{formatCartMoney(subtotal)}</strong>
+        </div>
+        {discountCents > 0 ? (
+          <div className="kgm-luxury-drawer__totals-line is-discount flex items-center justify-between gap-3 text-sm font-semibold text-emerald-700">
+            <span>İndirim</span>
+            <strong>-{formatCartMoney(discountCents)}</strong>
+          </div>
+        ) : null}
+        <div className="kgm-luxury-drawer__totals-grand flex items-center justify-between gap-3 border-t border-slate-200 pt-2">
+          <span className="text-sm font-black text-slate-950">Toplam</span>
+          <strong className="text-2xl font-black tracking-tight text-slate-950">{formatCartMoney(total)}</strong>
+        </div>
+        <p className="kgm-luxury-drawer__totals-note text-xs font-semibold text-slate-500">
+          Kargo ve vergiler ödeme sayfasında hesaplanır.
+        </p>
+      </div>
+
+      <Link
+        href={hasPendingSync ? "/sepet" : "/checkout"}
+        onClick={onClose}
+        aria-disabled={hasPendingSync}
+        className={cn(
+          "kgm-luxury-drawer__checkout flex min-h-12 items-center justify-center gap-3 rounded-lg px-4 text-sm font-black text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-orange-500/40",
+          hasPendingSync
+            ? "is-disabled bg-orange-400"
+            : "bg-orange-600 hover:bg-orange-700",
+        )}
+      >
+        <span>{hasPendingSync ? "Sepet eşitleniyor" : "Ödemeye geç"}</span>
+        <span className="kgm-luxury-drawer__checkout-amount rounded-md bg-white/15 px-2 py-1">
+          {formatCartMoney(total)}
+        </span>
+        <ArrowRight size={16} strokeWidth={2.4} />
+      </Link>
+
+      <div className="kgm-luxury-drawer__footer-row grid grid-cols-2 gap-2">
+        <Link
+          href="/sepet"
+          onClick={onClose}
+          className="kgm-luxury-drawer__view-cart inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+        >
+          Sepete git
+        </Link>
+        <button
+          type="button"
+          onClick={onClose}
+          className="kgm-luxury-drawer__continue inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 text-sm font-black text-slate-700 transition hover:bg-slate-50"
+        >
+          Alışverişe devam et
+        </button>
+      </div>
+
+      <div className="kgm-luxury-drawer__trust flex items-center justify-center gap-2 text-xs font-bold text-slate-400">
+        <Lock size={12} strokeWidth={2.25} />
+        <span>256-bit SSL - PayTR güvenli ödeme - Hızlı iade</span>
+      </div>
+    </footer>
+  );
+}
 
 export function CartSheet() {
   const isOpen = useCartStore((state) => state.isSheetOpen);
@@ -50,13 +447,6 @@ export function CartSheet() {
   const isServiceWaiting = Boolean(error && /bekleyin|yoğun/i.test(error));
   const hasPendingSync = pendingOutboxCount > 0;
 
-  const freeShippingProgress = Math.min(
-    100,
-    Math.round((subtotal / FREE_SHIPPING_CENTS) * 100),
-  );
-  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_CENTS - subtotal);
-  const freeShippingReached = subtotal >= FREE_SHIPPING_CENTS;
-
   useEffect(() => {
     if (!isOpen) return;
     track("view_cart", {
@@ -67,316 +457,82 @@ export function CartSheet() {
     });
   }, [appliedCoupon, count, isOpen, subtotal, total]);
 
+  const rowDisabled = (item: CartLineItem) => {
+    const isLocalPendingItem = item.id < 0;
+    return isBusy || isLocalPendingItem || hasPendingSync;
+  };
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => (open ? openSheet() : closeSheet())}>
       <SheetContent
         side="right"
         hideClose
-        className="kgm-luxury-drawer"
+        className="kgm-luxury-drawer w-full max-w-[460px] overflow-hidden border-l border-slate-200 bg-white shadow-2xl"
         aria-describedby={undefined}
       >
         <SheetTitle className="sr-only">Sepetiniz</SheetTitle>
-        <header className="kgm-luxury-drawer__header">
-          <div className="kgm-luxury-drawer__title">
-            <span className="kgm-luxury-drawer__title-badge" aria-hidden="true">
-              <ShoppingBag size={16} strokeWidth={2.25} />
-            </span>
-            <div>
-              <h2>Sepetiniz</h2>
-              <p>
-                {isEmpty
-                  ? "Henüz ürün eklemediniz"
-                  : `${count} ürün · ${formatCartMoney(subtotal)}`}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={closeSheet}
-            className="kgm-luxury-drawer__close"
-            aria-label="Sepeti kapat"
-          >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M1 1L13 13M13 1L1 13"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
-        </header>
+        <CartSheetHeader
+          isEmpty={isEmpty}
+          count={count}
+          subtotal={subtotal}
+          onClose={closeSheet}
+        />
 
-        {!isEmpty ? (
-          <div
-            className={`kgm-luxury-drawer__progress ${
-              freeShippingReached ? "is-reached" : ""
-            }`}
-          >
-            <div className="kgm-luxury-drawer__progress-row">
-              <span className="kgm-luxury-drawer__progress-icon" aria-hidden="true">
-                {freeShippingReached ? (
-                  <Sparkles size={14} strokeWidth={2.25} />
-                ) : (
-                  <Truck size={14} strokeWidth={2.25} />
-                )}
-              </span>
-              <p>
-                {freeShippingReached ? (
-                  <>
-                    Tebrikler! <strong>Ücretsiz kargo</strong> kazandınız.
-                  </>
-                ) : (
-                  <>
-                    <strong>{formatCartMoney(freeShippingRemaining)}</strong> daha
-                    eklerseniz <strong>kargo bedava</strong>.
-                  </>
-                )}
-              </p>
-            </div>
-            <div
-              className="kgm-luxury-drawer__progress-track"
-              role="progressbar"
-              aria-valuenow={freeShippingProgress}
-              aria-valuemin={0}
-              aria-valuemax={100}
-            >
-              <div
-                className="kgm-luxury-drawer__progress-fill"
-                style={{ width: `${freeShippingProgress}%` }}
-              />
-            </div>
-          </div>
-        ) : null}
+        {!isEmpty ? <FreeShippingMeter subtotal={subtotal} /> : null}
 
         {hasPendingSync ? (
-          <div className="kgm-luxury-drawer__notice is-waiting" role="status" aria-live="polite">
-            <span className="kgm-luxury-drawer__notice-icon" aria-hidden="true">
-              <Loader2 size={14} strokeWidth={2.5} className="animate-spin" />
-            </span>
-            <p>Sepetiniz cihazda korundu. Bağlantı hazır olunca otomatik eşitlenecek.</p>
-            <button type="button" onClick={() => void flushPendingCart().catch(() => undefined)}>Tekrar dene</button>
-          </div>
+          <CartNotice
+            tone="waiting"
+            icon={<Loader2 size={14} strokeWidth={2.5} className="animate-spin" />}
+            actionLabel="Tekrar dene"
+            onAction={() => flushPendingCart().catch(() => undefined)}
+          >
+            Sepetiniz cihazda korundu. Bağlantı hazır olunca otomatik eşitlenecek.
+          </CartNotice>
         ) : null}
 
         {error ? (
-          <div
-            className={`kgm-luxury-drawer__notice ${
-              isServiceWaiting ? "is-waiting" : "is-error"
-            }`}
-            role="status"
-            aria-live="polite"
-          >
-            <span className="kgm-luxury-drawer__notice-icon" aria-hidden="true">
-              {isServiceWaiting ? (
+          <CartNotice
+            tone={isServiceWaiting ? "waiting" : "error"}
+            icon={
+              isServiceWaiting ? (
                 <Loader2 size={14} strokeWidth={2.5} className="animate-spin" />
               ) : (
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M7 1L13 12H1L7 1Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-                  <path d="M7 6V8.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-                  <circle cx="7" cy="10.5" r="0.8" fill="currentColor" />
-                </svg>
-              )}
-            </span>
-            <p>{error}</p>
-          </div>
+                <AlertTriangle size={15} strokeWidth={2.3} />
+              )
+            }
+          >
+            {error}
+          </CartNotice>
         ) : null}
 
-        <div className="kgm-luxury-drawer__body">
+        <div className="kgm-luxury-drawer__body min-h-0 flex-1 overflow-y-auto bg-slate-50/70">
           {isEmpty ? (
-            <div className="flex h-full flex-col items-center justify-center space-y-7 px-6 text-center">
-              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-slate-50 text-slate-300 ring-1 ring-slate-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)]">
-                <ShoppingBag size={44} strokeWidth={1.5} />
-              </div>
-              <div className="space-y-2.5">
-                <h3 className="text-xl font-semibold tracking-tight text-slate-900">Sepetiniz Boş</h3>
-                <p className="mx-auto max-w-xs text-sm leading-relaxed text-slate-500">
-                  İhtiyacınız olan ürünler bir tık uzağınızda. Karacabey Gross seçkisini hemen keşfedin.
-                </p>
-              </div>
-              <Link
-                href="/products"
-                onClick={closeSheet}
-                className="group relative flex w-[85%] items-center justify-center gap-2 overflow-hidden rounded-xl bg-orange-600 px-4 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-600/30 active:scale-[0.98] active:shadow-sm"
-              >
-                <span>Ürünleri Keşfet</span>
-                <ArrowRight size={16} className="transition-transform group-hover:translate-x-1" />
-              </Link>
-            </div>
+            <CartEmptyState onClose={closeSheet} />
           ) : (
-            <ul className="kgm-luxury-drawer__items">
-              {items.map((item) => {
-                const unitPriceCents =
-                  item.quantity > 0
-                    ? Math.round(item.line_total_cents / item.quantity)
-                    : item.product.price_cents;
-                const imageUrl = productImageUrl(item.product.image_url);
-                const isLocalPendingItem = item.id < 0;
-                const rowDisabled = isBusy || isLocalPendingItem || hasPendingSync;
-                return (
-                  <li key={item.id} className="kgm-luxury-line">
-                    <div className="kgm-luxury-line__media">
-                      {imageUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={imageUrl}
-                          alt={item.product.name}
-                          loading="lazy"
-                        />
-                      ) : (
-                        <ShoppingBag size={22} strokeWidth={1.5} />
-                      )}
-                    </div>
-                    <div className="kgm-luxury-line__body">
-                      <div className="kgm-luxury-line__top">
-                        <div className="kgm-luxury-line__info">
-                          <span className="kgm-luxury-line__brand">
-                            {item.product.brand ?? "Karacabey Gross"}
-                          </span>
-                          <h4 className="kgm-luxury-line__name">
-                            {item.product.name}
-                          </h4>
-                          <span className="kgm-luxury-line__unit">
-                            {formatCartMoney(unitPriceCents)} / {item.product.unit_name?.trim() || "adet"}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => void removeItem(item.id).catch(() => undefined)}
-                          disabled={rowDisabled}
-                          className="kgm-luxury-line__remove"
-                          aria-label={`${item.product.name} ürününü kaldır`}
-                          title="Ürünü sepetten kaldır"
-                        >
-                          <Trash2 size={14} strokeWidth={2} />
-                        </button>
-                      </div>
-                      <div className="kgm-luxury-line__bottom">
-                        <div className="kgm-luxury-qty">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void updateItemQuantity(item.id, item.quantity - 1).catch(
-                                () => undefined,
-                              )
-                            }
-                            disabled={rowDisabled || item.quantity <= 1}
-                            aria-label="Adeti azalt"
-                          >
-                            <Minus size={13} strokeWidth={2.5} />
-                          </button>
-                          <span aria-live="polite">{item.quantity}</span>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              void updateItemQuantity(item.id, item.quantity + 1).catch(
-                                () => undefined,
-                              )
-                            }
-                            disabled={rowDisabled}
-                            aria-label="Adeti artır"
-                          >
-                            <Plus size={13} strokeWidth={2.5} />
-                          </button>
-                        </div>
-                        <strong className="kgm-luxury-line__total">
-                          {formatCartMoney(item.line_total_cents)}
-                        </strong>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-
-              {items.length > 1 ? (
-                <li className="kgm-luxury-drawer__clear-row">
-                  <button
-                    type="button"
-                    onClick={() => void clearCart().catch(() => undefined)}
-                    disabled={isBusy}
-                    className="kgm-luxury-drawer__clear"
-                  >
-                    <Trash2 size={13} strokeWidth={2} />
-                    Sepeti temizle
-                  </button>
-                </li>
-              ) : null}
-            </ul>
+            <CartItemsList
+              items={items}
+              rowDisabled={rowDisabled}
+              isBusy={isBusy}
+              onUpdateQuantity={(itemId, quantity) => updateItemQuantity(itemId, quantity).catch(() => undefined)}
+              onRemove={(itemId) => removeItem(itemId).catch(() => undefined)}
+              onClear={() => clearCart().catch(() => undefined)}
+            />
           )}
         </div>
 
         {!isEmpty ? (
-          <footer className="kgm-luxury-drawer__footer">
-            <div className="kgm-luxury-drawer__coupon">
-              <CouponInput
-                appliedCoupon={appliedCoupon}
-                onApply={applyCoupon}
-                onRemove={clearCoupon}
-                disabled={isBusy}
-              />
-            </div>
-
-            <div className="kgm-luxury-drawer__totals">
-              <div className="kgm-luxury-drawer__totals-line">
-                <span>Ara toplam</span>
-                <strong>{formatCartMoney(subtotal)}</strong>
-              </div>
-              {discountCents > 0 ? (
-                <div className="kgm-luxury-drawer__totals-line is-discount">
-                  <span>İndirim</span>
-                  <strong>-{formatCartMoney(discountCents)}</strong>
-                </div>
-              ) : null}
-              <div className="kgm-luxury-drawer__totals-grand">
-                <span>Toplam</span>
-                <strong>{formatCartMoney(total)}</strong>
-              </div>
-              <p className="kgm-luxury-drawer__totals-note">
-                Kargo ve vergiler ödeme sayfasında hesaplanır.
-              </p>
-            </div>
-
-            <Link
-              href={hasPendingSync ? "/sepet" : "/checkout"}
-              onClick={closeSheet}
-              aria-disabled={hasPendingSync}
-              className={`kgm-luxury-drawer__checkout${hasPendingSync ? " is-disabled" : ""}`}
-            >
-              <span>{hasPendingSync ? "Sepet eşitleniyor" : "Ödemeye geç"}</span>
-              <span className="kgm-luxury-drawer__checkout-amount">
-                {formatCartMoney(total)}
-              </span>
-              <ArrowRight size={16} strokeWidth={2.4} />
-            </Link>
-
-            <div className="kgm-luxury-drawer__footer-row">
-              <Link
-                href="/sepet"
-                onClick={closeSheet}
-                className="kgm-luxury-drawer__view-cart"
-              >
-                Sepete git
-              </Link>
-              <button
-                type="button"
-                onClick={closeSheet}
-                className="kgm-luxury-drawer__continue"
-              >
-                Alışverişe devam et
-              </button>
-            </div>
-
-            <div className="kgm-luxury-drawer__trust">
-              <Lock size={12} strokeWidth={2.25} />
-              <span>256-bit SSL · PayTR güvenli ödeme · Hızlı iade</span>
-            </div>
-          </footer>
+          <CartSummaryFooter
+            subtotal={subtotal}
+            total={total}
+            discountCents={discountCents}
+            appliedCoupon={appliedCoupon}
+            isBusy={isBusy}
+            hasPendingSync={hasPendingSync}
+            onApplyCoupon={applyCoupon}
+            onClearCoupon={clearCoupon}
+            onClose={closeSheet}
+          />
         ) : null}
       </SheetContent>
     </Sheet>

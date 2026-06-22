@@ -16,7 +16,7 @@ const SheetOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <Dialog.Overlay
     ref={ref}
-    className={cn("kgm-sheet-overlay fixed inset-0 z-50", className)}
+    className={cn("kgm-sheet-overlay fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-[1px]", className)}
     {...props}
   />
 ));
@@ -36,7 +36,7 @@ const SheetContent = React.forwardRef<
       aria-describedby={props["aria-describedby"] ?? undefined}
       data-side={side}
       className={cn(
-        "kgm-sheet-content fixed z-50 flex flex-col bg-white p-0 outline-none",
+        "kgm-sheet-content fixed z-50 flex flex-col bg-white p-0 shadow-2xl outline-none",
         side === "right" && "inset-y-0 right-0 h-full w-full max-w-[460px]",
         side === "left" && "inset-y-0 left-0 h-full w-full max-w-[460px]",
         side === "bottom" && "inset-x-0 bottom-0 rounded-t-3xl",

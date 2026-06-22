@@ -347,6 +347,8 @@ services:
         NEXT_PUBLIC_SITE_URL: "https://karacabeygrossmarket.com"
         NEXT_PUBLIC_CDN_URL: "https://cdn.karacabeygrossmarket.com"
         API_INTERNAL_URL: "http://go-api:8080"
+        KGM_CLASS_OBFUSCATION: ${KGM_CLASS_OBFUSCATION:-true}
+        KGM_CLASS_OBFUSCATION_SALT: ${KGM_CLASS_OBFUSCATION_SALT:-}
     image: kgm-next-web:production
     container_name: kgm-next-web
     restart: unless-stopped

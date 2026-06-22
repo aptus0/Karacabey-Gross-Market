@@ -7,7 +7,26 @@ const root = process.cwd();
 const buildDir = join(root, ".next");
 const manifestDir = join(root, ".kgm-build");
 const sourceRoots = [join(root, "app"), join(root, "lib")];
-const protectedPrefixes = ["kgm-", "site-header", "checkout-", "form-alert", "field-error", "primary-action"];
+const protectedPrefixes = [
+  "kgm-",
+  "site-header",
+  "checkout-",
+  "form-alert",
+  "field-error",
+  "primary-action",
+  "product-gallery",
+  "footer-brand",
+  "footer-bank",
+  "mobile-header",
+  "bottom-nav",
+  "search-bar",
+  "product-info",
+  "catalog",
+  "auth",
+  "price-box",
+  "shipping-free-label",
+  "mobile-summary-toggle",
+];
 const salt = process.env.KGM_CLASS_OBFUSCATION_SALT || randomBytes(12).toString("hex");
 const enabled = (process.env.KGM_CLASS_OBFUSCATION ?? "true").toLowerCase() !== "false";
 

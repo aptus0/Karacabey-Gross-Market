@@ -14,7 +14,7 @@ if (maps.length) {
   console.error(`Source map dosyaları bulundu: ${maps.slice(0, 5).join(", ")}`);
   process.exit(1);
 }
-const protectedClassPrefix = "(?:kgm-|site-header|checkout-|form-alert|field-error|primary-action)";
+const protectedClassPrefix = "(?:kgm-|site-header|checkout-|form-alert|field-error|primary-action|product-gallery|footer-brand|footer-bank|mobile-header|bottom-nav|search-bar|product-info|catalog|auth|price-box|shipping-free-label|mobile-summary-toggle)";
 const cssClassLeakRe = new RegExp(`\\.${protectedClassPrefix}[A-Za-z0-9_-]*`);
 const markupClassLeakRe = new RegExp(`class(?:Name)?=["'][^"']*${protectedClassPrefix}`);
 const jsClassLeakRe = new RegExp(`className["']?\\s*[:=]\\s*["'][^"']*${protectedClassPrefix}`);

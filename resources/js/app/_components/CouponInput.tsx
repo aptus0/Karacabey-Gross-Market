@@ -78,14 +78,14 @@ export function CouponInput({
 
   if (appliedCoupon) {
     return (
-      <div className="kgm-coupon-applied">
-        <div className="kgm-coupon-applied__body">
+      <div className="kgm-coupon-applied flex items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2">
+        <div className="kgm-coupon-applied__body flex min-w-0 items-center gap-2">
           <CheckCircle2 size={16} className="shrink-0 text-[#16A34A]" />
           <div className="min-w-0">
-            <p className="kgm-coupon-applied__code">
+            <p className="kgm-coupon-applied__code truncate text-sm font-black text-emerald-900">
               {appliedCoupon.code}
             </p>
-            <p className="kgm-coupon-applied__meta">
+            <p className="kgm-coupon-applied__meta text-xs font-semibold text-emerald-700">
               {appliedCoupon.discount_type === "percent"
                 ? `%${appliedCoupon.discount_value} indirim`
                 : formatCartMoney(appliedCoupon.discount_cents)}{" "}
@@ -99,7 +99,7 @@ export function CouponInput({
             track("coupon_remove", { coupon_code: appliedCoupon.code });
             handleRemove();
           }}
-          className="kgm-coupon-applied__remove"
+          className="kgm-coupon-applied__remove inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-emerald-700 transition hover:bg-white"
           aria-label="Kuponu kaldır"
         >
           <X size={15} />
@@ -109,13 +109,13 @@ export function CouponInput({
   }
 
   return (
-    <div className="kgm-coupon">
+    <div className="kgm-coupon rounded-lg border border-slate-200 bg-white">
       <button
         type="button"
         onClick={handleToggle}
-        className="kgm-coupon__toggle"
+        className="kgm-coupon__toggle flex min-h-11 w-full items-center justify-between gap-3 px-3 text-left text-sm font-black text-slate-700"
       >
-        <span className="kgm-coupon__toggle-label">
+        <span className="kgm-coupon__toggle-label inline-flex items-center gap-2">
           <Tag size={14} className="text-[#FF7A00]" />
           Kuponum var
         </span>
@@ -132,8 +132,8 @@ export function CouponInput({
         )}
       >
         <div className="overflow-hidden">
-          <div className="kgm-coupon__body">
-            <div className="kgm-coupon__row">
+          <div className="kgm-coupon__body grid gap-2 border-t border-slate-100 p-3">
+            <div className="kgm-coupon__row flex gap-2">
               <Input
                 ref={inputRef}
                 value={code}
@@ -151,7 +151,7 @@ export function CouponInput({
                 maxLength={64}
                 disabled={disabled || validating}
                 className={cn(
-                  "kgm-coupon__input flex-1 font-mono tracking-widest placeholder:font-sans placeholder:not-italic placeholder:tracking-normal",
+                  "kgm-coupon__input min-w-0 flex-1 font-mono tracking-widest placeholder:font-sans placeholder:not-italic placeholder:tracking-normal",
                   error && "border-[#EF4444] focus-visible:ring-[#EF4444]",
                 )}
                 autoComplete="off"
@@ -161,7 +161,7 @@ export function CouponInput({
                 type="button"
                 onClick={handleApply}
                 disabled={!code.trim() || disabled || validating}
-                className="kgm-coupon__button"
+                className="kgm-coupon__button shrink-0 rounded-lg bg-slate-950 px-4 text-xs font-black text-white hover:bg-slate-800"
               >
                 {validating ? (
                   <Loader2 size={15} className="animate-spin" />
