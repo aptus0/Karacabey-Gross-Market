@@ -59,13 +59,22 @@ export function cartItemCount(items: CartLineItem[]) {
 }
 
 export function normalizeCart(cart?: Partial<CartData> | null): CartData {
+  const items = (cart?.items ?? []).map((item) => ({
+    ...item,
+    product: {
+      ...item.product,
+      image_url: productImageUrl(item.product?.image_url),
+    },
+  }));
+
   return {
     customer_uid: cart?.customer_uid ?? null,
     sync_version: cart?.sync_version ?? 0,
     cart_token: cart?.cart_token ?? null,
-    items: cart?.items ?? [],
+    items,
     applied_coupon: cart?.applied_coupon ?? null,
     subtotal_cents: cart?.subtotal_cents ?? 0,
     total_cents: cart?.total_cents ?? 0,
   };
 }
+import { productImageUrl } from "@/lib/media";

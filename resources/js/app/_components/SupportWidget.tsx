@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Headphones, MessageCircle, Send, X } from "lucide-react";
+import { ApiRequestError } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { useCartStore } from "@/lib/cart-store";
 import {
+  clearStoredSupportConversation,
   createSupportConversation,
   fetchSupportMessages,
   readStoredSupportConversation,
@@ -15,7 +17,7 @@ import {
   type SupportMessage,
 } from "@/lib/support";
 
-const whatsappUrl = "https://wa.me/9065453458663";
+const whatsappUrl = "https://wa.me/9065453458663?text=Merhaba%2C%20Karacabey%20Gross%20Market%20sipari%C5%9Fim%20i%C3%A7in%20destek%20almak%20istiyorum.";
 
 export function SupportWidget() {
   const [open, setOpen] = useState(false);
@@ -48,17 +50,27 @@ export function SupportWidget() {
     setConversation(stored);
     fetchSupportMessages(stored, token)
       .then((payload) => setMessages(payload.messages ?? []))
-      .catch(() => setConversation(null));
+      .catch((err) => {
+        if (err instanceof ApiRequestError && (err.status === 403 || err.status === 404)) {
+          clearStoredSupportConversation();
+          setConversation(null);
+          setMessages([]);
+        }
+      });
   }, [token]);
 
   useEffect(() => {
     if (!conversation || typeof EventSource === "undefined") return;
 
     const source = new EventSource(supportStreamUrl(conversation, lastId));
+    source.onerror = () => {
+      setError("Canlı destek bağlantısı yenileniyor. Mesajınız korunur.");
+    };
     source.addEventListener("message", (event) => {
       try {
         const message = JSON.parse(event.data) as SupportMessage;
         setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+        setError(null);
       } catch {
         // Ignore malformed event payloads.
       }
@@ -99,6 +111,10 @@ export function SupportWidget() {
       }
     } catch (err) {
       setDraft(message);
+      if (conversation && err instanceof ApiRequestError && (err.status === 403 || err.status === 404)) {
+        clearStoredSupportConversation();
+        setConversation(null);
+      }
       setError(err instanceof Error ? err.message : "Mesaj gönderilemedi.");
     } finally {
       setLoading(false);

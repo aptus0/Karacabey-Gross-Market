@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { ChevronDown, Minus, Plus, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { CouponInput } from "@/app/_components/CouponInput";
 import { Button } from "@/app/_components/ui/button";
 import { formatCartMoney, type CartLineItem } from "@/lib/cart";
 import { useCartStore } from "@/lib/cart-store";
+import { FREE_SHIPPING_CENTS } from "@/lib/shipping-policy";
 import { cn } from "@/lib/utils";
+import { productImageUrl } from "@/lib/media";
 
 type CheckoutSummaryProps = {
   items?: CartLineItem[];
@@ -48,6 +49,9 @@ export function CheckoutSummary({
   const resolvedSubtotal = items ? items.reduce((sum, item) => sum + item.line_total_cents, 0) : subtotal;
   const discountCents = resolvedCoupon?.discount_cents ?? 0;
   const resolvedTotal = items ? resolvedSubtotal : total;
+  const freeShippingRemaining = Math.max(0, FREE_SHIPPING_CENTS - resolvedSubtotal);
+  const freeShippingProgress = Math.min(100, Math.round((resolvedSubtotal / FREE_SHIPPING_CENTS) * 100));
+  const hasFreeShipping = resolvedSubtotal >= FREE_SHIPPING_CENTS;
 
   // Calculate dynamic grand total including shipping
   const dynamicTotal = resolvedTotal + (shippingCents ?? 0);
@@ -97,17 +101,34 @@ export function CheckoutSummary({
           {description ? <p>{description}</p> : null}
         </div>
 
+        {editable ? (
+          <div className={cn("kgm-cart-free-shipping", hasFreeShipping && "is-complete")} role="status" aria-live="polite">
+            <div>
+              <Truck size={15} />
+              <span>
+                {hasFreeShipping
+                  ? `${formatCartMoney(FREE_SHIPPING_CENTS)} üzeri ücretsiz kargo aktif.`
+                  : `${formatCartMoney(freeShippingRemaining)} daha ekle, kargo ücretsiz olsun.`}
+              </span>
+            </div>
+            <span aria-hidden="true"><i style={{ width: `${freeShippingProgress}%` }} /></span>
+          </div>
+        ) : null}
+
         <ul className="kgm-cart-lines">
-          {resolvedItems.map((item) => (
+          {resolvedItems.map((item) => {
+            const imageUrl = productImageUrl(item.product.image_url);
+            const rowDisabled = status === "updating" || item.id < 0 || pendingOutboxCount > 0;
+
+            return (
             <li key={item.id} className="kgm-cart-row">
               <div className="kgm-cart-row__image">
-                {item.product.image_url ? (
-                  <Image
-                    src={item.product.image_url}
+                {imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={imageUrl}
                     alt={item.product.name}
-                    fill
-                    sizes="52px"
-                    className="object-contain"
+                    loading="lazy"
                   />
                 ) : (
                   <ShoppingBag size={18} />
@@ -130,7 +151,7 @@ export function CheckoutSummary({
                     <button
                       type="button"
                       onClick={() => void handleQuantityChange(item.id, item.quantity - 1)}
-                      disabled={status === "updating" || item.quantity <= 1}
+                      disabled={rowDisabled || item.quantity <= 1}
                       aria-label="Adeti azalt"
                     >
                       <Minus size={12} strokeWidth={2.5} />
@@ -139,7 +160,7 @@ export function CheckoutSummary({
                     <button
                       type="button"
                       onClick={() => void handleQuantityChange(item.id, item.quantity + 1)}
-                      disabled={status === "updating"}
+                      disabled={rowDisabled}
                       aria-label="Adeti artır"
                     >
                       <Plus size={12} strokeWidth={2.5} />
@@ -148,7 +169,7 @@ export function CheckoutSummary({
                   <button
                     type="button"
                     onClick={() => void handleItemRemoval(item.id)}
-                    disabled={status === "updating"}
+                    disabled={rowDisabled}
                     aria-label="Ürünü kaldır"
                     className="kgm-cart-row__remove"
                     title="Ürünü sepetten kaldır"
@@ -160,7 +181,8 @@ export function CheckoutSummary({
                 <span className="kgm-cart-row__qty">{item.quantity} adet</span>
               )}
             </li>
-          ))}
+          );
+          })}
         </ul>
 
         <div className="kgm-cart-totalbox">

@@ -6,6 +6,7 @@ import {
   type KgmCategory,
   type KgmProduct,
 } from "@/lib/catalog";
+import { productImageUrl } from "@/lib/media";
 import { resolveInternalApiOrigin } from "@/lib/server-config";
 
 type NextFetchInit = RequestInit & {
@@ -96,7 +97,7 @@ function safeRevalidate(seconds: number, fallback: number) {
 
 function toStorefrontProduct(product: StorefrontProductResponse): KgmProduct {
   const primaryCategory = product.categories?.[0];
-  const imageUrl = safeImageUrl(product.image_url);
+  const imageUrl = productImageUrl(product.image_url);
   const sku = getSeoString(product.seo, "erkur_kod") ?? getSeoString(product.seo, "sku");
   const barcode = getSeoString(product.seo, "gtin13") ?? product.barcode?.trim() ?? undefined;
   const hasCompareAtPrice = Boolean(
@@ -133,26 +134,6 @@ function getSeoString(seo: StorefrontProductResponse["seo"], key: string): strin
   const value = seo?.[key];
 
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function safeImageUrl(url?: string | null): string | null {
-  const cleanedUrl = url?.trim();
-
-  if (!cleanedUrl || /kgm-logo|kg-web|favicon/i.test(cleanedUrl)) {
-    return null;
-  }
-
-  if (cleanedUrl.startsWith("/")) {
-    return cleanedUrl;
-  }
-
-  try {
-    const parsedUrl = new URL(cleanedUrl);
-
-    return parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:" ? cleanedUrl : null;
-  } catch {
-    return null;
-  }
 }
 
 function toStorefrontCategory(category: NonNullable<CategoryIndexResponse["data"]>[number]): KgmCategory {

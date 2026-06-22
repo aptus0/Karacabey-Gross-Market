@@ -121,7 +121,7 @@ export function HomeCommerceExperience({
   ).slice(0, 14);
 
   return (
-    <main className="kgm-home-phase21 min-h-screen bg-[#fafafa] text-slate-950">
+    <main className="kgm-home-phase21 kgm-home-stable min-h-screen bg-slate-50 text-slate-950">
       <section className="mx-auto grid max-w-[1320px] gap-4 px-3 py-4 sm:px-4 lg:px-5 xl:grid-cols-[220px_minmax(0,1fr)]">
         <HomeLeftSidebar categories={visibleCategories} />
 

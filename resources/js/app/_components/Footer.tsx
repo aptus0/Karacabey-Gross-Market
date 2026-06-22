@@ -39,11 +39,6 @@ type BrandLogo = {
   tone?: "orange" | "green" | "blue" | "slate" | "red";
 };
 
-type BankLogoGroup = {
-  title: string;
-  banks: BrandLogo[];
-};
-
 const cardLogos: BrandLogo[] = [
   { name: "Visa", src: "/assets/brands/payment/visa-20260521.svg" },
   { name: "Mastercard", src: "/assets/brands/payment/mastercard-20260521.svg" },
@@ -57,96 +52,6 @@ const mealCardLogos: BrandLogo[] = [
   { name: "Multinet", src: "/assets/brands/meal/multinet-20260521.svg" },
   { name: "Edenred Ticket", src: "/assets/brands/meal/edenred-ticket-20260521.svg" },
   { name: "MetropolCard", src: "/assets/brands/meal/metropol-20260521.svg" },
-  { name: "Setcard", initials: "SC", tone: "green" },
-  { name: "TokenFlex", initials: "TF", tone: "blue" },
-  { name: "Paye Kart", initials: "PK", tone: "orange" },
-];
-
-// BDDK authorized bank list checked on 2026-06-19; refresh before future launch changes.
-const bankLogoGroups: BankLogoGroup[] = [
-  {
-    title: "Mevduat bankaları",
-    banks: [
-      { name: "Akbank", initials: "AK", tone: "red" },
-      { name: "AlternatifBank", initials: "AB", tone: "blue" },
-      { name: "Anadolubank", initials: "AN", tone: "blue" },
-      { name: "Arap Türk Bankası", initials: "AT", tone: "green" },
-      { name: "Bank Mellat", initials: "BM", tone: "red" },
-      { name: "Bank of China Turkey", initials: "BC", tone: "red" },
-      { name: "Burgan Bank", initials: "BU", tone: "blue" },
-      { name: "Citibank", initials: "CI", tone: "blue" },
-      { name: "Colendi Bank", initials: "CO", tone: "orange" },
-      { name: "DenizBank", initials: "DB", tone: "blue" },
-      { name: "Deutsche Bank", initials: "DE", tone: "blue" },
-      { name: "Enpara Bank", initials: "EN", tone: "slate" },
-      { name: "Fibabanka", initials: "FB", tone: "blue" },
-      { name: "FUPS Bank", initials: "FU", tone: "orange" },
-      { name: "HSBC Bank", initials: "HS", tone: "red" },
-      { name: "ICBC Turkey Bank", initials: "IC", tone: "red" },
-      { name: "ING Bank", initials: "IN", tone: "orange" },
-      { name: "Intesa Sanpaolo", initials: "IS", tone: "green" },
-      { name: "JP Morgan Chase Bank", initials: "JP", tone: "slate" },
-      { name: "MUFG Bank Turkey", initials: "MU", tone: "red" },
-      { name: "Odea Bank", initials: "OD", tone: "blue" },
-      { name: "QNB Bank", initials: "QN", tone: "blue" },
-      { name: "Rabobank", initials: "RA", tone: "orange" },
-      { name: "Societe Generale", initials: "SG", tone: "red" },
-      { name: "Şekerbank", initials: "SE", tone: "green" },
-      { name: "Ziraat Bankası", initials: "ZB", tone: "red" },
-      { name: "Turkish Bank", initials: "TB", tone: "blue" },
-      { name: "Turkland Bank", initials: "TL", tone: "blue" },
-      { name: "TEB", initials: "TE", tone: "green" },
-      { name: "Türk Ticaret Bankası", initials: "TT", tone: "slate" },
-      { name: "Garanti BBVA", initials: "GB", tone: "green" },
-      { name: "Halkbank", initials: "HB", tone: "blue" },
-      { name: "İş Bankası", initials: "IB", tone: "blue" },
-      { name: "VakıfBank", initials: "VB", tone: "orange" },
-      { name: "Yapı Kredi", initials: "YK", tone: "blue" },
-      { name: "Ziraat Dinamik Banka", initials: "ZD", tone: "red" },
-    ],
-  },
-  {
-    title: "Kalkınma ve yatırım bankaları",
-    banks: [
-      { name: "Aktif Yatırım Bankası", initials: "AY", tone: "orange" },
-      { name: "Aytemiz Yatırım Bankası", initials: "AT", tone: "red" },
-      { name: "Bank of America Yatırım Bank", initials: "BA", tone: "red" },
-      { name: "BankPozitif", initials: "BP", tone: "green" },
-      { name: "D Yatırım Bankası", initials: "DY", tone: "slate" },
-      { name: "Destek Yatırım Bankası", initials: "DE", tone: "blue" },
-      { name: "Diler Yatırım Bankası", initials: "DI", tone: "slate" },
-      { name: "Golden Global Yatırım Bankası", initials: "GG", tone: "orange" },
-      { name: "GSD Yatırım Bankası", initials: "GS", tone: "blue" },
-      { name: "Hedef Yatırım Bankası", initials: "HE", tone: "green" },
-      { name: "İller Bankası", initials: "IL", tone: "green" },
-      { name: "Takasbank", initials: "TA", tone: "slate" },
-      { name: "Misyon Yatırım Bankası", initials: "MI", tone: "blue" },
-      { name: "Nurol Yatırım Bankası", initials: "NU", tone: "orange" },
-      { name: "PASHA Yatırım Bankası", initials: "PA", tone: "green" },
-      { name: "Q Yatırım Bankası", initials: "QY", tone: "blue" },
-      { name: "Standard Chartered", initials: "SC", tone: "green" },
-      { name: "Tera Yatırım Bankası", initials: "TR", tone: "red" },
-      { name: "Türk Eximbank", initials: "EX", tone: "blue" },
-      { name: "Türkiye Kalkınma ve Yatırım Bankası", initials: "KY", tone: "green" },
-      { name: "TSKB", initials: "TS", tone: "green" },
-    ],
-  },
-  {
-    title: "Katılım bankaları ve TMSF",
-    banks: [
-      { name: "Adil Katılım Bankası", initials: "AD", tone: "green" },
-      { name: "Albaraka Türk", initials: "AL", tone: "green" },
-      { name: "Dünya Katılım", initials: "DK", tone: "green" },
-      { name: "Hayat Finans", initials: "HF", tone: "green" },
-      { name: "Kuveyt Türk", initials: "KT", tone: "green" },
-      { name: "T.O.M. Katılım Bankası", initials: "TO", tone: "blue" },
-      { name: "Emlak Katılım", initials: "EK", tone: "green" },
-      { name: "Türkiye Finans", initials: "TF", tone: "green" },
-      { name: "Vakıf Katılım", initials: "VK", tone: "green" },
-      { name: "Ziraat Katılım", initials: "ZK", tone: "green" },
-      { name: "Birleşik Fon Bankası", initials: "BF", tone: "slate" },
-    ],
-  },
 ];
 
 const footerNotes = [
@@ -452,31 +357,37 @@ export function Footer({ compact = false }: FooterProps) {
             </div>
           </div>
 
-          <div className="footer-bank-logos" aria-label="Türkiye'de faaliyet gösteren bankalar">
+          <div className="footer-bank-logos" aria-label="Desteklenen kart ve banka ödeme altyapısı">
             <div className="footer-bank-logos__head">
               <div>
-                <span>Banka ağı</span>
-                <strong>Türkiye'de faaliyet gösteren bankalar</strong>
+                <span>Banka ve kart altyapısı</span>
+                <strong>PayTR, Bankkart ve kart ağları</strong>
               </div>
-              <p>BDDK yetkili kuruluş listesi referans alınarak bilgilendirme amaçlı gösterilir.</p>
+              <p>Kart ve banka bazlı ödeme desteği PayTR ve mağaza anlaşmalarına göre doğrulanır.</p>
             </div>
 
             <div className="footer-bank-logos__groups">
-              {bankLogoGroups.map((group) => (
-                <section key={group.title} className="footer-bank-logos__group" aria-label={group.title}>
-                  <strong>{group.title}</strong>
-                  <div>
-                    {group.banks.map((bank) => (
-                      <BrandTile key={`${group.title}-${bank.name}`} brand={bank} variant="bank" />
-                    ))}
-                  </div>
-                </section>
-              ))}
+              <section className="footer-bank-logos__group" aria-label="Kart markaları">
+                <strong>Kart markaları</strong>
+                <div>
+                  {cardLogos.map((bank) => (
+                    <BrandTile key={`bank-network-${bank.name}`} brand={bank} variant="bank" />
+                  ))}
+                </div>
+              </section>
+              <section className="footer-bank-logos__group" aria-label="Yemek kartları">
+                <strong>Yemek kartları</strong>
+                <div>
+                  {mealCardLogos.map((card) => (
+                    <BrandTile key={`meal-network-${card.name}`} brand={card} variant="bank" />
+                  ))}
+                </div>
+              </section>
             </div>
           </div>
 
           <p className="text-xs leading-6 text-[#94A3B8]">
-            Desteklenen ödeme alanında aktif kart ağları, PayTR güvenli ödeme altyapısı ve mağazada geçerli yemek kartları gösterilir. Banka listesi ödeme/taksit taahhüdü değildir; banka bazlı destek PayTR ve mağaza anlaşmalarına göre değişebilir.
+            Desteklenen ödeme alanında aktif kart ağları, PayTR güvenli ödeme altyapısı ve mağazada geçerli yemek kartları gösterilir. Banka bazlı destek PayTR ve mağaza anlaşmalarına göre değişebilir.
           </p>
 
           <Separator className="bg-[#2D3A52]" />

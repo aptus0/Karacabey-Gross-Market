@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
 import {
@@ -24,6 +23,7 @@ import { cartItemCount, formatCartMoney } from "@/lib/cart";
 import { useCartStore } from "@/lib/cart-store";
 import { FREE_SHIPPING_CENTS } from "@/lib/shipping-policy";
 import { track } from "@/lib/tracking";
+import { productImageUrl } from "@/lib/media";
 
 export function CartSheet() {
   const isOpen = useCartStore((state) => state.isSheetOpen);
@@ -216,16 +216,18 @@ export function CartSheet() {
                   item.quantity > 0
                     ? Math.round(item.line_total_cents / item.quantity)
                     : item.product.price_cents;
+                const imageUrl = productImageUrl(item.product.image_url);
+                const isLocalPendingItem = item.id < 0;
+                const rowDisabled = isBusy || isLocalPendingItem || hasPendingSync;
                 return (
                   <li key={item.id} className="kgm-luxury-line">
                     <div className="kgm-luxury-line__media">
-                      {item.product.image_url ? (
-                        <Image
-                          src={item.product.image_url}
+                      {imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={imageUrl}
                           alt={item.product.name}
-                          fill
-                          sizes="84px"
-                          className="object-contain"
+                          loading="lazy"
                         />
                       ) : (
                         <ShoppingBag size={22} strokeWidth={1.5} />
@@ -247,7 +249,7 @@ export function CartSheet() {
                         <button
                           type="button"
                           onClick={() => void removeItem(item.id).catch(() => undefined)}
-                          disabled={isBusy}
+                          disabled={rowDisabled}
                           className="kgm-luxury-line__remove"
                           aria-label={`${item.product.name} ürününü kaldır`}
                           title="Ürünü sepetten kaldır"
@@ -264,7 +266,7 @@ export function CartSheet() {
                                 () => undefined,
                               )
                             }
-                            disabled={isBusy || item.quantity <= 1}
+                            disabled={rowDisabled || item.quantity <= 1}
                             aria-label="Adeti azalt"
                           >
                             <Minus size={13} strokeWidth={2.5} />
@@ -277,7 +279,7 @@ export function CartSheet() {
                                 () => undefined,
                               )
                             }
-                            disabled={isBusy}
+                            disabled={rowDisabled}
                             aria-label="Adeti artır"
                           >
                             <Plus size={13} strokeWidth={2.5} />

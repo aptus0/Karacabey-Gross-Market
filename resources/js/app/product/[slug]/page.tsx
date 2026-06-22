@@ -23,6 +23,8 @@ import { ProductPurchasePanel } from "@/app/_components/ProductPurchasePanel";
 import { ProductSlider } from "@/app/_components/ProductSlider";
 import { SeoHead } from "@/app/_components/SeoHead";
 import { GuestLayout } from "@/app/_layouts/GuestLayout";
+import { formatCartMoney } from "@/lib/cart";
+import { productImageUrl } from "@/lib/media";
 import {
   breadcrumbSchema,
   buildMetadata,
@@ -32,6 +34,7 @@ import {
   webPageSchema,
 } from "@/lib/seo";
 import { fetchStorefrontProduct, fetchStorefrontProducts } from "@/lib/storefront-products";
+import { FREE_SHIPPING_CENTS } from "@/lib/shipping-policy";
 
 export const revalidate = 120;
 
@@ -84,29 +87,42 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   const metadataImage = seoString(product.seo, "og_image") ?? seoString(product.seo, "twitter_image") ?? firstProductImage;
   const metadataImageAlt = seoString(product.seo, "og_image_alt") ?? seoString(product.seo, "image_alt");
   const metadataKeywords = seoKeywords(product.seo);
+  const metadata = buildMetadata({
+    title: metadataTitle,
+    description: metadataDescription,
+    path: `/product/${product.slug}`,
+    image: metadataImage,
+    imageAlt: metadataImageAlt,
+    type: "website",
+    keywords: [
+      ...metadataKeywords,
+      product.name,
+      ...(brandLabel ? [brandLabel, `${brandLabel} ${product.name}`] : []),
+      categoryLabel,
+      `${categoryLabel} sipariş`,
+      `${categoryLabel} fiyat`,
+      `${product.name} fiyat`,
+      `${product.name} online sipariş`,
+      "online market",
+      "Karacabey market",
+      "Bursa market",
+      "hızlı teslimat",
+      stockLabel,
+    ].filter(Boolean),
+  });
 
   return {
-    ...buildMetadata({
-      title: metadataTitle,
-      description: metadataDescription,
-      path: `/product/${product.slug}`,
-      image: metadataImage,
-      imageAlt: metadataImageAlt,
-      type: "article",
-      keywords: [
-        ...metadataKeywords,
-        product.name,
-        ...(brandLabel ? [brandLabel, `${brandLabel} ${product.name}`] : []),
-        categoryLabel,
-        `${categoryLabel} sipariş`,
-        `${categoryLabel} fiyat`,
-        "online market",
-        "Karacabey market",
-        "Bursa market",
-        "hızlı teslimat",
-        stockLabel,
-      ].filter(Boolean),
-    }),
+    ...metadata,
+    other: {
+      ...(metadata.other ?? {}),
+      "product:brand": brandLabel ?? product.brand,
+      "product:availability": product.stock > 0 ? "in stock" : "out of stock",
+      "product:condition": "new",
+      "product:price:amount": product.price.toFixed(2),
+      "product:price:currency": "TRY",
+      "og:price:amount": product.price.toFixed(2),
+      "og:price:currency": "TRY",
+    },
   };
 }
 
@@ -147,6 +163,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const stockStatus = product.stock > 0 ? (product.stock <= 5 ? `${product.stock} adet kaldı` : "Stokta var") : "Stokta yok";
   const galleryStockStatus = product.stock > 0 ? "Stokta var" : "Stokta yok";
   const productCode = product.sku ?? product.slug;
+  const primaryImage = productImageUrl(product.image);
   const ratingValue = seoNumberValue(product.seo, "rating_value");
   const reviewCount = seoNumberValue(product.seo, "review_count");
   const productSpecs = [
@@ -170,27 +187,27 @@ export default async function ProductPage({ params }: ProductPageProps) {
   return (
     <GuestLayout>
       <SeoHead data={jsonLd} />
-      <main className="kgm-product-page">
+      <main className="kgm-product-page kgm-product-page-v3 kgm-product-stable">
         <Breadcrumb
           items={breadcrumbItems.map((item, index) => (
             index === breadcrumbItems.length - 1 ? { label: item.label } : item
           ))}
         />
 
-        <section className="kgm-product-detail">
+        <section className="kgm-product-detail kgm-product-detail-v3">
           <div className="kgm-product-detail__media">
-            <div className="kgm-product-gallery-shell">
+            <div className="kgm-product-gallery-shell kgm-product-gallery-shell-v3">
               <span className="kgm-product-gallery-stock">
                 <CheckCircle2 size={16} />
                 {galleryStockStatus}
               </span>
               <FavoriteButton productSlug={product.slug} className="kgm-product-gallery-favorite" iconSize={20} />
-              <ProductGallery images={product.gallery ?? [product.image]} name={product.name} />
+              <ProductGallery images={product.gallery?.length ? product.gallery : [product.image]} name={product.name} />
             </div>
           </div>
 
           <div className="kgm-product-detail__info">
-            <div className="kgm-product-summary">
+            <div className="kgm-product-summary kgm-product-summary-v3">
               <div className="kgm-product-detail__meta">
                 {brandLabel ? (
                   <span>{brandLabel}</span>
@@ -219,7 +236,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 {product.barcode ? <span><Barcode size={14} /> {product.barcode}</span> : null}
               </div>
 
-              <div className="kgm-product-price-row">
+              <div className="kgm-product-price-row kgm-product-price-row-v3">
                 <PriceBox price={product.price} oldPrice={product.oldPrice} unit={product.unit} />
               </div>
 
@@ -249,7 +266,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
           </div>
 
-          <aside className="kgm-product-detail__buy">
+          <aside className="kgm-product-detail__buy kgm-product-detail__buy-v3">
             <div className="kgm-product-side-card">
               <div className="kgm-product-seller-card">
                 <div className="kgm-product-seller-card__icon" aria-hidden="true">
@@ -276,6 +293,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <span>Stok Durumu</span>
                   <strong>{stockStatus}</strong>
                 </div>
+                <div>
+                  <Truck size={20} />
+                  <span>Kargo</span>
+                  <strong>{formatCartMoney(FREE_SHIPPING_CENTS)} üzeri ücretsiz</strong>
+                </div>
               </div>
 
               <ProductPurchasePanel
@@ -291,7 +313,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   price: product.price.toFixed(2),
                   stock_quantity: product.stock,
                   unit_name: product.unit,
-                  image_url: product.image,
+                  image_url: primaryImage,
                 } : undefined}
               />
             </div>

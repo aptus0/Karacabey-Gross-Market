@@ -14,6 +14,7 @@ import {
   type CartLineItem,
   type CartProduct,
 } from "@/lib/cart";
+import { productImageUrl } from "@/lib/media";
 
 type CartStatus = "idle" | "loading" | "updating" | "error";
 
@@ -160,6 +161,9 @@ function friendlyCartError(error: unknown, fallback: string): string {
   if (isServiceUnavailable(error)) {
     return "Sepet sunucuyla senkronize ediliyor. Ürünler cihazınızda korunuyor.";
   }
+  if (error instanceof ApiRequestError && (error.status === 403 || error.status === 404)) {
+    return "Sepetiniz yenilendi. Lütfen işlemi tekrar deneyin.";
+  }
   return extractErrorMessage(error, fallback);
 }
 
@@ -179,6 +183,13 @@ function snapshotCart(state: CartData): CartData {
   };
 }
 
+function normalizeCartProduct(product: CartProduct): CartProduct {
+  return {
+    ...product,
+    image_url: productImageUrl(product.image_url),
+  };
+}
+
 function recomputeTotals(items: CartLineItem[], coupon: AppliedCoupon | null) {
   const subtotal = items.reduce((sum, item) => sum + item.line_total_cents, 0);
   let total = subtotal;
@@ -194,8 +205,9 @@ function recomputeTotals(items: CartLineItem[], coupon: AppliedCoupon | null) {
 }
 
 function applyOptimisticAdd(state: CartData, product: CartProduct, quantity: number): CartData {
+  const safeProduct = normalizeCartProduct(product);
   const stockLimit = product.stock_quantity > 0 ? product.stock_quantity : 99;
-  const existingIndex = state.items.findIndex((item) => item.product.id === product.id);
+  const existingIndex = state.items.findIndex((item) => item.product.id === safeProduct.id);
   const nextItems = state.items.map((item) => ({ ...item, product: { ...item.product } }));
   if (existingIndex >= 0) {
     const existing = nextItems[existingIndex];
@@ -212,8 +224,8 @@ function applyOptimisticAdd(state: CartData, product: CartProduct, quantity: num
     nextItems.push({
       id: optimisticId,
       quantity: safeQuantity,
-      line_total_cents: safeQuantity * product.price_cents,
-      product: { ...product },
+      line_total_cents: safeQuantity * safeProduct.price_cents,
+      product: { ...safeProduct },
     });
   }
   const { subtotal, total } = recomputeTotals(nextItems, state.applied_coupon);
@@ -281,18 +293,19 @@ export const useCartStore = create<CartStore>()(
         });
       },
       addItem: async (product, quantity = 1, options = { openSheet: false }) => {
-        productCache.set(product.slug, product);
-        productIdCache.set(product.slug, product.id);
+        const normalizedProduct = normalizeCartProduct(product);
+        productCache.set(normalizedProduct.slug, normalizedProduct);
+        productIdCache.set(normalizedProduct.slug, normalizedProduct.id);
 
         const snapshot = snapshotCart(get());
-        const optimistic = applyOptimisticAdd(snapshot, product, quantity);
+        const optimistic = applyOptimisticAdd(snapshot, normalizedProduct, quantity);
         set({
           ...optimistic,
           status: "idle",
           error: null,
           isHydrated: true,
           isSheetOpen: options.openSheet ?? false,
-          lastAddedItem: { product, quantity },
+          lastAddedItem: { product: normalizedProduct, quantity },
         });
         notifyCartMutation();
 
@@ -302,7 +315,7 @@ export const useCartStore = create<CartStore>()(
               "/api/v1/cart/items",
               {
                 method: "POST",
-                body: JSON.stringify({ product_id: product.id, quantity }),
+                body: JSON.stringify({ product_id: normalizedProduct.id, quantity }),
               },
               ensureGuestCartToken(get, set),
             );
@@ -311,7 +324,7 @@ export const useCartStore = create<CartStore>()(
             return nextCart;
           } catch (error) {
             if (shouldKeepOptimisticCart(error)) {
-              const pendingOutboxCount = enqueueCartMutation("add", { product_id: product.id, quantity });
+              const pendingOutboxCount = enqueueCartMutation("add", { product_id: normalizedProduct.id, quantity });
               const localCart = normalizeCart(get());
               set({
                 ...localCart,
@@ -320,7 +333,7 @@ export const useCartStore = create<CartStore>()(
                 pendingOutboxCount,
                 isHydrated: true,
                 isSheetOpen: options.openSheet ?? false,
-                lastAddedItem: { product, quantity },
+                lastAddedItem: { product: normalizedProduct, quantity },
               });
               return localCart;
             }

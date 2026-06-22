@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 type KgmLogoProps = {
   compact?: boolean;
   variant?: "full" | "app" | "header";
@@ -11,6 +13,7 @@ function cx(...values: Array<string | false | null | undefined>) {
 export function KgmLogo({ compact = false, variant = "full", className }: KgmLogoProps) {
   const logoClass = cx(
     "kgm-logo",
+    "kgm-logo-stable",
     variant === "header" && "kgm-logo--header-real",
     variant === "app" && "kgm-logo--app-real",
     compact && "kgm-logo--compact",
@@ -20,13 +23,12 @@ export function KgmLogo({ compact = false, variant = "full", className }: KgmLog
   if (variant === "app") {
     return (
       <span className={logoClass}>
-        <img
+        <Image
           src="/assets/kgm-favicon-256.png"
           alt="Karacabey Gross Market"
           width={256}
           height={256}
-          loading="eager"
-          decoding="async"
+          priority
         />
       </span>
     );
@@ -34,13 +36,12 @@ export function KgmLogo({ compact = false, variant = "full", className }: KgmLog
 
   return (
     <span className={logoClass}>
-      <img
+      <Image
         src="/assets/kgm-logo.png"
         alt="Karacabey Gross Market"
         width={1400}
         height={742}
-        loading="eager"
-        decoding="async"
+        priority
       />
     </span>
   );

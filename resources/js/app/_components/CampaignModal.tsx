@@ -2,15 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowRight, ShoppingBag, X } from "lucide-react";
 import { track } from "@/lib/tracking";
 
 export function CampaignModal() {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const isCommerceFlow = pathname === "/sepet" || pathname?.startsWith("/checkout") || pathname?.startsWith("/product/");
 
   useEffect(() => {
+    if (isCommerceFlow) {
+      setIsOpen(false);
+      return;
+    }
+
     const hasSeenModal = sessionStorage.getItem("kgm-campaign-modal-seen");
     if (!hasSeenModal) {
       const timer = setTimeout(() => {
@@ -22,7 +30,7 @@ export function CampaignModal() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isCommerceFlow]);
 
   function handleClose() {
     setIsOpen(false);

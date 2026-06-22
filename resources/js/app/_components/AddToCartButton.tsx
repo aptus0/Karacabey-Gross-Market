@@ -49,6 +49,7 @@ export function AddToCartButton({
   ));
   const cartQty = cartItem?.quantity ?? 0;
   const cartItemId = cartItem?.id ?? null;
+  const isLocalPendingItem = typeof cartItemId === "number" && cartItemId < 0;
   const unitLabel = (cartItem?.product.unit_name ?? optimisticProduct?.unit_name)?.trim() || "adet";
   const inCart = cartQty > 0;
 
@@ -176,7 +177,7 @@ export function AddToCartButton({
           <button
             type="button"
             onClick={handleDecrease}
-            disabled={isPending || disabled}
+            disabled={isPending || disabled || isLocalPendingItem}
             className="flex h-full w-11 shrink-0 items-center justify-center text-[#FF7A00] transition hover:bg-[#FFE4C4] disabled:opacity-50"
             aria-label="Azalt"
           >
@@ -188,7 +189,7 @@ export function AddToCartButton({
           <button
             type="button"
             onClick={handleIncrease}
-            disabled={isPending || disabled}
+            disabled={isPending || disabled || isLocalPendingItem}
             className="flex h-full w-11 shrink-0 items-center justify-center text-[#FF7A00] transition hover:bg-[#FFE4C4] disabled:opacity-50"
             aria-label="Artır"
           >

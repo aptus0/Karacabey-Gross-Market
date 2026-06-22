@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, BadgeCheck, Clock3, CreditCard, PackageCheck, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, BadgeCheck, CreditCard, PackageCheck, ShieldCheck, ShoppingCart, Truck } from "lucide-react";
 import { CheckoutSummary } from "@/app/_components/CheckoutSummary";
 import { AppLayout } from "@/app/_layouts/AppLayout";
+import { formatCartMoney } from "@/lib/cart";
 import { buildMetadata } from "@/lib/seo";
+import { FREE_SHIPPING_CENTS } from "@/lib/shipping-policy";
 
 export const metadata: Metadata = buildMetadata({
   title: "Sepet",
@@ -13,70 +15,54 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function CartPage() {
-  const assuranceItems = [
-    { icon: <PackageCheck size={18} />, label: "Canlı stok", text: "Sepetteki adetler sunucuda tekrar doğrulanır." },
-    { icon: <Truck size={18} />, label: "Teslimat", text: "Adres ve kargo seçimi ödeme adımında netleşir." },
-    { icon: <ShieldCheck size={18} />, label: "Güvenli ödeme", text: "PayTR ve 3D Secure destekli checkout." },
-  ];
-
   return (
     <AppLayout>
-      <main className="kgm-cart-page">
-        <section className="kgm-cart-page__head">
+      <main className="kgm-cart-page kgm-cart-v3 kgm-cart-stable">
+        <section className="kgm-cart-stable__topbar kgm-cart-v3__topbar">
           <div>
-            <span>Sepet operasyonu</span>
-            <h1>Siparişini netleştir, güvenli ödeme adımına geç.</h1>
-            <p>Ürün adetlerini, paketleri ve kuponunu burada kontrol et. Stok ve fiyatlar ödeme öncesinde sunucuda yeniden doğrulanır.</p>
+            <span><ShoppingCart size={15} /> Sepet</span>
+            <h1>Siparişini netleştir.</h1>
+            <p>Ürünleri ve kuponu hızlıca kontrol et. Ödeme öncesinde stok, fiyat ve teslimat bilgisi sunucuda tekrar doğrulanır.</p>
           </div>
-          <div className="kgm-cart-page__head-actions">
-            <Link href="/products" className="kgm-cart-page__secondary-link">Alışverişe devam et</Link>
-            <Link href="/checkout" className="kgm-cart-page__primary-link">
-              Ödemeye geç
-              <ArrowRight size={16} />
-            </Link>
+          <div className="kgm-cart-v3__badges" aria-label="Sepet avantajları">
+            <span><Truck size={15} /> {formatCartMoney(FREE_SHIPPING_CENTS)} üzeri ücretsiz kargo</span>
+            <span><ShieldCheck size={15} /> PayTR güvenli ödeme</span>
           </div>
         </section>
 
-        <section className="kgm-cart-assurance" aria-label="Sepet güvence adımları">
-          {assuranceItems.map((item) => (
-            <div key={item.label}>
-              <span aria-hidden="true">{item.icon}</span>
-              <strong>{item.label}</strong>
-              <p>{item.text}</p>
-            </div>
-          ))}
-        </section>
-
-        <div className="kgm-cart-page__grid">
+        <div className="kgm-cart-v3__grid">
           <CheckoutSummary
             editable
-            title="Sepetteki ürünler"
-            description="Paket, adet ve indirim bilgilerini ödeme öncesinde son kez kontrol edin."
+            title="Ürünler"
+            description="Sepetteki ürünleri hızlıca güncelle."
+            className="kgm-cart-summary--v3"
           />
-          <aside className="kgm-cart-next-card">
-            <div className="kgm-cart-next-card__top">
+
+          <aside className="kgm-cart-stable__side kgm-cart-v3__side" aria-label="Ödeme özeti">
+            <div className="kgm-cart-v3__side-head">
               <span><CreditCard size={18} /></span>
               <div>
                 <h2>Sonraki adım</h2>
-                <p>Adres, teslimat ve ödeme bilgilerini tamamlayıp siparişi güvenle oluştur.</p>
+                <p>Adres ve teslimat bilgisini tamamlayıp güvenli ödemeye geç.</p>
               </div>
             </div>
 
-            <Link href="/checkout" className="kgm-cart-next-card__checkout">
+            <Link href="/checkout" className="kgm-cart-v3__checkout">
               Ödemeye devam et
               <ArrowRight size={16} />
             </Link>
 
-            <div className="kgm-cart-next-card__checks" aria-label="Checkout kontrol listesi">
+            <div className="kgm-cart-v3__checks">
+              <span><PackageCheck size={15} /> Stok ödeme öncesi doğrulanır</span>
               <span><BadgeCheck size={15} /> KDV dahil fiyatlar</span>
-              <span><ShieldCheck size={15} /> Güvenli ödeme</span>
-              <span><Clock3 size={15} /> Hızlı sipariş akışı</span>
+              <span><Truck size={15} /> {formatCartMoney(FREE_SHIPPING_CENTS)} üzeri kargo ücretsiz</span>
+              <span><ShieldCheck size={15} /> 3D Secure destekli ödeme</span>
             </div>
 
-            <div className="kgm-cart-next-card__links">
+            <div className="kgm-cart-v3__links">
               <Link href="/kargo-hesaplama">Kargo hesaplama</Link>
               <Link href="/teslimat-bolgeleri">Teslimat bölgeleri</Link>
-              <Link href="/kampanyalar">Kampanyalar</Link>
+              <Link href="/products">Alışverişe devam et</Link>
             </div>
           </aside>
         </div>

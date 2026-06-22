@@ -6,6 +6,7 @@ import { FavoriteButton } from "@/app/_components/FavoriteButton";
 import { formatPrice } from "@/lib/catalog";
 import { cn } from "@/lib/utils";
 import type { CartProduct } from "@/lib/cart";
+import { productImageUrl } from "@/lib/media";
 
 type ProductCardProps = {
   product: KgmProduct;
@@ -13,7 +14,7 @@ type ProductCardProps = {
 };
 
 export function ProductCard({ product, priority = false }: ProductCardProps) {
-  const imageUrl = safeImageUrl(product.image);
+  const imageUrl = productImageUrl(product.image);
   const isFallbackImage = !imageUrl;
   const outOfStock = product.stock === 0;
   const hasDiscount = Boolean(product.oldPrice && product.oldPrice > product.price);
@@ -81,16 +82,6 @@ export function ProductCard({ product, priority = false }: ProductCardProps) {
   );
 }
 
-function safeImageUrl(url?: string | null) {
-  if (!url || /kgm-logo|kg-web|favicon/i.test(url)) return null;
-  try {
-    const parsedUrl = new URL(url, "http://localhost");
-    return parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:" || url.startsWith("/") ? url : null;
-  } catch {
-    return url.startsWith("/") ? url : null;
-  }
-}
-
 function toCartProduct(product: KgmProduct): CartProduct | undefined {
   if (typeof product.id !== "number") return undefined;
 
@@ -103,6 +94,6 @@ function toCartProduct(product: KgmProduct): CartProduct | undefined {
     price: product.price.toFixed(2),
     stock_quantity: product.stock,
     unit_name: product.unit,
-    image_url: product.image,
+    image_url: productImageUrl(product.image),
   };
 }

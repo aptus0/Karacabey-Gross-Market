@@ -29,6 +29,10 @@ function stripTrailingSlash(value: string | null | undefined) {
   return value ? value.replace(/\/+$/, "") : "";
 }
 
+function isDockerRuntime() {
+  return existsSync("/.dockerenv") || process.env.KGM_DOCKER_RUNTIME === "true";
+}
+
 function resolveApiOrigin() {
   const internalCandidate = process.env.GO_API_INTERNAL_URL
     ?? process.env.INTERNAL_API_URL
@@ -46,9 +50,9 @@ function resolveApiOrigin() {
 
   try {
     const host = new URL(normalizedInternal).hostname.toLowerCase();
-    const dockerOnlyHosts = new Set(["web", "app", "php", "backend", "api"]);
+    const dockerOnlyHosts = new Set(["web", "app", "php", "backend", "api", "go-api"]);
 
-    if (dockerOnlyHosts.has(host)) {
+    if (dockerOnlyHosts.has(host) && !isDockerRuntime()) {
       return stripTrailingSlash(publicCandidate);
     }
   } catch {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { KgmCategory, KgmProduct } from "@/lib/catalog";
+import { FREE_SHIPPING_CENTS, STANDARD_SHIPPING_CENTS } from "@/lib/shipping-policy";
 
 export const siteName = "Karacabey Gross Market";
 export const legalName = "Karacabey Gross Market";
@@ -425,6 +426,8 @@ export function productSchema(product: KgmProduct) {
   const gtin14 = product.barcode && /^\d{14}$/.test(product.barcode) ? product.barcode : undefined;
   const ratingValue = seoNumber(product.seo, "rating_value");
   const reviewCount = seoNumber(product.seo, "review_count");
+  const standardShippingValue = (STANDARD_SHIPPING_CENTS / 100).toFixed(2);
+  const freeShippingThresholdValue = (FREE_SHIPPING_CENTS / 100).toFixed(2);
 
   return {
     "@type": "Product",
@@ -465,7 +468,12 @@ export function productSchema(product: KgmProduct) {
       },
       shippingDetails: {
         "@type": "OfferShippingDetails",
-        shippingRate: { "@type": "MonetaryAmount", value: "0", currency: "TRY" },
+        shippingRate: { "@type": "MonetaryAmount", value: standardShippingValue, currency: "TRY" },
+        freeShippingThreshold: {
+          "@type": "MonetaryAmount",
+          value: freeShippingThresholdValue,
+          currency: "TRY",
+        },
         shippingDestination: { "@type": "DefinedRegion", addressCountry: "TR" },
         deliveryTime: {
           "@type": "ShippingDeliveryTime",

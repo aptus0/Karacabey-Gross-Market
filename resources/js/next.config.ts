@@ -50,6 +50,10 @@ function normalizeOrigin(value: string | null | undefined) {
   }
 }
 
+function isDockerRuntime() {
+  return existsSync("/.dockerenv") || process.env.KGM_DOCKER_RUNTIME === "true";
+}
+
 function toRemotePattern(origin: string | null | undefined) {
   const normalized = normalizeOrigin(origin);
 
@@ -88,9 +92,9 @@ function resolveApiOrigin() {
 
   try {
     const host = new URL(normalizedInternal).hostname.toLowerCase();
-    const dockerOnlyHosts = new Set(["web", "app", "php", "backend", "api"]);
+    const dockerOnlyHosts = new Set(["web", "app", "php", "backend", "api", "go-api"]);
 
-    if (dockerOnlyHosts.has(host)) {
+    if (dockerOnlyHosts.has(host) && !isDockerRuntime()) {
       return publicCandidate;
     }
   } catch {

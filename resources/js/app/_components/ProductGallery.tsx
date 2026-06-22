@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent } from "react";
 import { Images, Package, X, ZoomIn } from "lucide-react";
 import type { Swiper as SwiperType } from "swiper";
 import { FreeMode, Navigation, Thumbs } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { cn } from "@/lib/utils";
+import { normalizeProductImageList } from "@/lib/media";
 
 type ProductGalleryProps = {
   images: string[];
@@ -17,12 +18,19 @@ function isLogoPlaceholder(image: string) {
 }
 
 export function ProductGallery({ images, name }: ProductGalleryProps) {
-  const safeImages = useMemo(() => images.filter(Boolean).filter((image) => !isLogoPlaceholder(image)), [images]);
+  const safeImages = useMemo(
+    () => normalizeProductImageList(images).filter((image) => !isLogoPlaceholder(image)),
+    [images],
+  );
   const [thumbsSwiper, setThumbsSwiper] = useState<SwiperType | null>(null);
   const [activeImage, setActiveImage] = useState(safeImages[0] ?? "");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 50, y: 50 });
   const selectedImage = activeImage || safeImages[0];
+
+  useEffect(() => {
+    setActiveImage(safeImages[0] ?? "");
+  }, [safeImages]);
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
     const bounds = event.currentTarget.getBoundingClientRect();

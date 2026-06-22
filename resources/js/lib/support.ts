@@ -47,6 +47,11 @@ export function storeSupportConversation(conversation: StoredSupportConversation
   window.localStorage.setItem(SUPPORT_STORAGE_KEY, JSON.stringify(conversation));
 }
 
+export function clearStoredSupportConversation() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(SUPPORT_STORAGE_KEY);
+}
+
 export function supportGuestToken() {
   if (typeof window === "undefined") return null;
   const existing = window.localStorage.getItem(SUPPORT_GUEST_KEY);

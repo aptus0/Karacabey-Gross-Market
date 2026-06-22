@@ -6,6 +6,7 @@ import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { PackageSearch, Search } from "lucide-react";
 import { Command, CommandItem, CommandList } from "@/app/_components/ui/command";
 import { fetchProductSuggestions, localProductSuggestions, type ProductSuggestion } from "@/lib/product-search";
+import { productImageUrl } from "@/lib/media";
 
 type SearchBarProps = {
   compact?: boolean;
@@ -80,7 +81,7 @@ export function SearchBar({ compact = false }: SearchBarProps) {
           <div className="search-suggestions__title">Önerilen ürünler</div>
           <CommandList aria-label="Önerilen ürünler">
             {suggestions.map((product) => {
-              const imageUrl = safeImageUrl(product.image_url);
+              const imageUrl = productImageUrl(product.image_url);
 
               return (
                 <CommandItem
@@ -112,18 +113,4 @@ export function SearchBar({ compact = false }: SearchBarProps) {
       ) : null}
     </form>
   );
-}
-
-function safeImageUrl(url?: string | null): string | null {
-  if (!url) {
-    return null;
-  }
-
-  try {
-    const parsedUrl = new URL(url);
-
-    return parsedUrl.protocol === "https:" || parsedUrl.protocol === "http:" ? url : null;
-  } catch {
-    return null;
-  }
 }

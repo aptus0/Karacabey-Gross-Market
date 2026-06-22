@@ -8,8 +8,8 @@ use App\Models\SupportMessage;
 use App\Support\TenantResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\StreamedResponse;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class SupportController extends Controller
 {

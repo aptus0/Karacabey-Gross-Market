@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, ShoppingBasket, Trash2 } from "lucide-react";
 import { cartItemCount, formatCartMoney } from "@/lib/cart";
 import { useCartStore } from "@/lib/cart-store";
+import { productImageUrl } from "@/lib/media";
 
 export function HomeCartSummary() {
   const items = useCartStore((state) => state.items);
@@ -26,12 +27,15 @@ export function HomeCartSummary() {
 
       {previewItems.length > 0 ? (
         <div className="grid gap-2.5">
-          {previewItems.map((item) => (
+          {previewItems.map((item) => {
+            const imageUrl = productImageUrl(item.product?.image_url);
+
+            return (
             <div key={item.id} className="kgm-home-cart-line">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-orange-50 ring-1 ring-orange-100">
-                {item.product?.image_url ? (
+                {imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.product.image_url} alt={item.product.name} className="h-full w-full object-cover" />
+                  <img src={imageUrl} alt={item.product.name} className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-[10px] font-black text-orange-700">KGM</span>
                 )}
@@ -49,7 +53,8 @@ export function HomeCartSummary() {
                 <Trash2 size={14} />
               </button>
             </div>
-          ))}
+          );
+          })}
         </div>
       ) : (
         <div className="rounded-lg border border-dashed border-orange-200 bg-orange-50/60 p-3 text-xs font-bold leading-5 text-slate-600">
